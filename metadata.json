@@ -1,0 +1,6 @@
+{
+  "name": "Peta Lokasi Kegiatan Operasional",
+  "description": "Aplikasi pemetaan lokasi kegiatan operasional tim berbasis Google Sheets dan Leaflet.js.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
