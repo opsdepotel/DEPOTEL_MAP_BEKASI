@@ -1,2 +1,61 @@
 @import "tailwindcss";
 @import "leaflet/dist/leaflet.css";
+
+/* Side Marker Popup Custom Styling */
+.side-marker-popup {
+  margin-bottom: 0 !important;
+}
+
+.side-marker-popup .leaflet-popup-content-wrapper {
+  border-radius: 16px !important;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.18), 0 8px 10px -6px rgba(15, 23, 42, 0.1) !important;
+  border: 1px solid rgba(226, 232, 240, 0.9) !important;
+  padding: 0 !important;
+  position: relative !important;
+  overflow: visible !important;
+}
+
+.side-marker-popup .leaflet-popup-content {
+  margin: 12px 14px !important;
+  line-height: 1.4 !important;
+}
+
+/* Hide default bottom tip container */
+.side-marker-popup .leaflet-popup-tip-container {
+  display: none !important;
+}
+
+/* Indicator arrow on the left side of the badge pointing directly at the marker */
+.side-marker-popup .leaflet-popup-content-wrapper::before {
+  content: '';
+  position: absolute;
+  left: -6px;
+  top: 50%;
+  transform: translateY(-50%) rotate(45deg);
+  width: 12px;
+  height: 12px;
+  background-color: #ffffff;
+  border-left: 1px solid rgba(226, 232, 240, 0.9);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: -2px 2px 4px rgba(0, 0, 0, 0.04);
+  z-index: 10;
+}
+
+.side-marker-popup .leaflet-popup-close-button {
+  top: 8px !important;
+  right: 8px !important;
+  color: #64748b !important;
+  font-size: 16px !important;
+  width: 22px !important;
+  height: 22px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 6px !important;
+  transition: all 0.15s ease !important;
+}
+
+.side-marker-popup .leaflet-popup-close-button:hover {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}

@@ -9,7 +9,6 @@ import {
   MapPin,
   Layers,
   MessageSquare,
-  ExternalLink,
   Camera,
   Maximize2
 } from 'lucide-react';
@@ -234,7 +233,7 @@ export const MapView: React.FC<MapViewProps> = ({
       html,
       iconSize: [40, 42],
       iconAnchor: [20, 42],
-      popupAnchor: [0, -42],
+      popupAnchor: [155, 135],
     });
   };
 
@@ -292,33 +291,16 @@ export const MapView: React.FC<MapViewProps> = ({
                 click: () => onSelectActivity(activity),
               }}
             >
-              <Popup>
+              <Popup
+                className="side-marker-popup"
+                autoPan={true}
+                autoPanPadding={[40, 40]}
+              >
                 <div className="p-1.5 max-w-[240px] font-sans text-slate-800">
                   {/* Name Title */}
-                  <h3 className="font-bold text-sm text-slate-900 leading-snug">
+                  <h3 className="font-bold text-sm text-slate-900 leading-snug mb-2 pr-6">
                     {activity.userName}
                   </h3>
-
-                  {/* Category Pill & Photo Badge Button */}
-                  <div className="mt-1 mb-2 flex items-center justify-between gap-1 flex-wrap">
-                    <span className="inline-block px-2.5 py-0.5 text-[11px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-md">
-                      {activity.category || 'Aktivitas'}
-                    </span>
-
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (onViewPhoto) onViewPhoto(activity);
-                      }}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold text-indigo-700 bg-indigo-100/70 hover:bg-indigo-200/80 active:scale-95 rounded-md transition cursor-pointer border border-indigo-200/80"
-                      title="Lihat Foto & Detail Activity di Modal Besar"
-                    >
-                      <Camera className="w-3 h-3 text-indigo-600" />
-                      <span>Foto</span>
-                      <Maximize2 className="w-2.5 h-2.5 text-indigo-500" />
-                    </button>
-                  </div>
 
                   {/* Photo Thumbnail Preview Card */}
                   <div className="mb-2">
@@ -341,6 +323,21 @@ export const MapView: React.FC<MapViewProps> = ({
                           className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                         />
                       </div>
+                    </button>
+
+                    {/* Tombol Foto di bawah foto */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onViewPhoto) onViewPhoto(activity);
+                      }}
+                      className="mt-1.5 w-full inline-flex items-center justify-center gap-1.5 px-2.5 py-1 text-[11px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 active:scale-[0.98] rounded-lg transition cursor-pointer border border-indigo-200/80 shadow-xs"
+                      title="Lihat Foto & Detail Activity di Modal Besar"
+                    >
+                      <Camera className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>Foto</span>
+                      <Maximize2 className="w-2.5 h-2.5 text-indigo-500" />
                     </button>
                   </div>
 
@@ -366,19 +363,6 @@ export const MapView: React.FC<MapViewProps> = ({
                       <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                       <span>Waktu: {formatWaktuDisplay(activity.date, activity.time)}</span>
                     </div>
-                  </div>
-
-                  {/* Buka Google Maps Button */}
-                  <div className="mt-2.5 pt-1">
-                    <a
-                      href={`https://www.google.com/maps/search/?api=1&query=${activity.lat},${activity.lng}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100/80 rounded-lg border border-blue-200/80 transition no-underline w-full justify-center"
-                    >
-                      <span>Buka Google Maps</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
                   </div>
                 </div>
               </Popup>

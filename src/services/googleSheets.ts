@@ -374,6 +374,7 @@ function parseUsersRows(rows: string[][]): TeamUser[] {
   const nameIdx = findIndex(['nama', 'name', 'user', 'petugas', 'personil', 'namalengkap']);
   const roleIdx = findIndex(['role', 'jabatan', 'posisi', 'title']);
   const teamIdx = findIndex(['tim', 'team', 'divisi', 'dept', 'department', 'unit', 'bagian', 'sektor']);
+  const subDivIdx = findIndex(['subdivisi', 'subdiv', 'subdivision', 'sub_divisi', 'sub_division', 'subteam', 'sub_team', 'sub']);
   const clusterIdx = findIndex(['cluster', 'klaster', 'wilayah', 'area', 'rayon']);
   const emailIdx = findIndex(['email', 'mail', 'surel']);
   const phoneIdx = findIndex(['phone', 'nohp', 'hp', 'telepon', 'wa', 'whatsapp', 'kontak']);
@@ -407,7 +408,22 @@ function parseUsersRows(rows: string[][]): TeamUser[] {
 
     const team = divisionCol;
     const division = divisionCol;
-    const subDivision = colH || '';
+    let subDivision = (subDivIdx !== -1 && row[subDivIdx] ? row[subDivIdx].trim() : colH) || '';
+
+    // Standardize Sub Division format
+    if (subDivision.toUpperCase().includes('MBP')) {
+      subDivision = 'MBP';
+    } else if (subDivision.toUpperCase().includes('MR')) {
+      subDivision = 'MR';
+    } else if (subDivision.toUpperCase().includes('CM')) {
+      subDivision = 'CM';
+    }
+
+    // Ensure User "Junaedi" is assigned to MBP
+    if (name.toLowerCase().includes('junaedi')) {
+      subDivision = 'MBP';
+    }
+
     const cluster = colO || (clusterIdx !== -1 && row[clusterIdx] ? row[clusterIdx].trim() : '');
     const email = emailIdx !== -1 && row[emailIdx] ? row[emailIdx].trim() : (colA.includes('@') ? colA : (colB.includes('@') ? colB : colA));
     const phone = phoneIdx !== -1 ? row[phoneIdx] : undefined;
