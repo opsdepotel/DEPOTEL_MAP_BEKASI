@@ -12,7 +12,9 @@ import {
   Clock3,
   AlertCircle,
   ExternalLink,
-  ListFilter
+  ListFilter,
+  Camera,
+  Maximize2
 } from 'lucide-react';
 
 interface ActivityListProps {
@@ -22,6 +24,7 @@ interface ActivityListProps {
   onFilterChange: (newFilter: ActivityFilter) => void;
   selectedActivity: TeamActivity | null;
   onSelectActivity: (activity: TeamActivity) => void;
+  onViewPhoto?: (activity: TeamActivity) => void;
   selectedUserId: string;
   onSelectUser: (userId: string) => void;
   showTrail: boolean;
@@ -35,6 +38,7 @@ export const ActivityList: React.FC<ActivityListProps> = ({
   onFilterChange,
   selectedActivity,
   onSelectActivity,
+  onViewPhoto,
   selectedUserId,
   onSelectUser,
   showTrail,
@@ -263,12 +267,26 @@ export const ActivityList: React.FC<ActivityListProps> = ({
                   </p>
                 )}
 
-                {/* Footer Tag */}
-                <div className="flex items-center text-[11px] text-slate-400 pt-1">
-                  <span className="flex items-center gap-1">
+                {/* Footer Tag & Photo Preview Button */}
+                <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                  <span className="flex items-center gap-1 text-[11px] font-semibold text-slate-500">
                     <Tag className="w-3 h-3 text-slate-400" />
                     {act.category}
                   </span>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (onViewPhoto) onViewPhoto(act);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-extrabold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 rounded-lg transition"
+                    title="Lihat Foto Activity di Modal Besar"
+                  >
+                    <Camera className="w-3 h-3 text-indigo-600" />
+                    <span>Foto Activity</span>
+                    <Maximize2 className="w-2.5 h-2.5 text-indigo-500" />
+                  </button>
                 </div>
 
               </div>

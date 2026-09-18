@@ -1,4 +1,5 @@
 import { TeamUser, TeamActivity } from '../types';
+import { formatPhotoUrl } from '../utils/photo';
 
 export const DEFAULT_SHEET_ID = '1H39tuO0E_WLJUtl6ebzH4w3kd76XZa9rMLadwDuxwQs';
 
@@ -396,8 +397,16 @@ function parseUsersRows(rows: string[][]): TeamUser[] {
     const name = colC || (nameIdx !== -1 && row[nameIdx] ? row[nameIdx].trim() : (colA || `User ${i}`));
     const id = idIdx !== -1 && row[idIdx] ? row[idIdx].trim() : (colA || `USR${String(i).padStart(3, '0')}`);
     const role = roleIdx !== -1 && row[roleIdx] ? row[roleIdx].trim() : 'Anggota Tim';
-    const team = colG || (teamIdx !== -1 && row[teamIdx] ? row[teamIdx].trim() : 'FMS');
-    const division = colG || team;
+    const divisionCol = colG || (teamIdx !== -1 && row[teamIdx] ? row[teamIdx].trim() : '');
+
+    // Strict filter: ONLY include users whose Division column explicitly contains "FMS".
+    // Blank/empty entries or non-FMS divisions (e.g. NOC, IT, HR, or blank) are excluded.
+    if (!divisionCol || !divisionCol.toUpperCase().includes('FMS')) {
+      continue;
+    }
+
+    const team = divisionCol;
+    const division = divisionCol;
     const subDivision = colH || '';
     const cluster = colO || (clusterIdx !== -1 && row[clusterIdx] ? row[clusterIdx].trim() : '');
     const email = emailIdx !== -1 && row[emailIdx] ? row[emailIdx].trim() : (colA.includes('@') ? colA : (colB.includes('@') ? colB : colA));
@@ -458,6 +467,16 @@ function parseActivityRows(rows: string[][], knownUsers: TeamUser[]): TeamActivi
     let actUserEmail = emailIdx !== -1 && row[emailIdx] ? row[emailIdx].trim() : '';
     const rawUserCell = userIdx !== -1 && row[userIdx] ? row[userIdx].trim() : '';
 
+    // Exclude activities for non-FMS personnel (such as Andreas A. Prasetyo)
+    const lowerRawUser = rawUserCell.toLowerCase();
+    const lowerActEmail = actUserEmail.toLowerCase();
+    if (
+      lowerRawUser.includes('andreas') ||
+      lowerActEmail.includes('andreas')
+    ) {
+      continue;
+    }
+
     if (!actUserEmail) {
       if (rawUserCell.includes('@')) {
         actUserEmail = rawUserCell;
@@ -489,6 +508,11 @@ function parseActivityRows(rows: string[][], knownUsers: TeamUser[]): TeamActivi
         const uEmail = (u.email || '').toLowerCase();
         return uId === rCell || uName === rCell || (uEmail && rCell.includes(uEmail));
       });
+    }
+
+    // Exclude activity if the user is not part of the FMS team (knownUsers)
+    if (!matchedUser) {
+      continue;
     }
 
     // Joined fields from Users sheet (User Name, Divisi, Sub Divisi, Cluster)
@@ -565,7 +589,8 @@ function parseActivityRows(rows: string[][], knownUsers: TeamUser[]): TeamActivi
 
     const category = catIdx !== -1 && row[catIdx] ? row[catIdx] : 'Aktivitas';
     const status = statusIdx !== -1 && row[statusIdx] ? row[statusIdx] : 'Selesai';
-    const photoUrl = photoIdx !== -1 && row[photoIdx] ? row[photoIdx] : undefined;
+    const rawPhoto = photoIdx !== -1 && row[photoIdx] ? row[photoIdx] : undefined;
+    const photoUrl = rawPhoto ? formatPhotoUrl(rawPhoto) : undefined;
 
     activities.push({
       id,

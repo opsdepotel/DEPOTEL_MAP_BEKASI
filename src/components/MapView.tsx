@@ -2,13 +2,16 @@ import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { TeamUser, TeamActivity } from '../types';
+import { formatPhotoUrl, DEFAULT_ACTIVITY_PHOTO } from '../utils/photo';
 import { getSiteDisplay, formatWaktuDisplay } from '../services/googleSheets';
 import {
   Clock,
   MapPin,
   Layers,
   MessageSquare,
-  ExternalLink
+  ExternalLink,
+  Camera,
+  Maximize2
 } from 'lucide-react';
 
 interface MapViewProps {
@@ -17,6 +20,7 @@ interface MapViewProps {
   selectedActivity: TeamActivity | null;
   selectedUserId: string; // 'ALL' or specific user ID
   onSelectActivity: (activity: TeamActivity | null) => void;
+  onViewPhoto?: (activity: TeamActivity) => void;
   showTrail: boolean;
 }
 
@@ -31,11 +35,6 @@ const TILE_LAYERS = {
     name: 'Satelit Esri',
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
-  },
-  positron: {
-    name: 'Kartu Terang',
-    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
   },
 };
 
@@ -75,9 +74,10 @@ export const MapView: React.FC<MapViewProps> = ({
   selectedActivity,
   selectedUserId,
   onSelectActivity,
+  onViewPhoto,
   showTrail,
 }) => {
-  const [activeTile, setActiveTile] = useState<'osm' | 'satellite' | 'positron'>('osm');
+  const [activeTile, setActiveTile] = useState<'osm' | 'satellite'>('osm');
   const markerRefs = useRef<{ [key: string]: L.Marker | null }>({});
 
   // Auto-open popup when selectedActivity changes
@@ -299,11 +299,49 @@ export const MapView: React.FC<MapViewProps> = ({
                     {activity.userName}
                   </h3>
 
-                  {/* Category Pill Badge */}
-                  <div className="mt-1 mb-2">
+                  {/* Category Pill & Photo Badge Button */}
+                  <div className="mt-1 mb-2 flex items-center justify-between gap-1 flex-wrap">
                     <span className="inline-block px-2.5 py-0.5 text-[11px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-md">
                       {activity.category || 'Aktivitas'}
                     </span>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onViewPhoto) onViewPhoto(activity);
+                      }}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold text-indigo-700 bg-indigo-100/70 hover:bg-indigo-200/80 active:scale-95 rounded-md transition cursor-pointer border border-indigo-200/80"
+                      title="Lihat Foto & Detail Activity di Modal Besar"
+                    >
+                      <Camera className="w-3 h-3 text-indigo-600" />
+                      <span>Foto</span>
+                      <Maximize2 className="w-2.5 h-2.5 text-indigo-500" />
+                    </button>
+                  </div>
+
+                  {/* Photo Thumbnail Preview Card */}
+                  <div className="mb-2">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onViewPhoto) onViewPhoto(activity);
+                      }}
+                      className="w-full group relative overflow-hidden rounded-xl border border-indigo-200/80 bg-slate-900 p-0.5 transition shadow-sm cursor-pointer hover:border-indigo-400 text-left"
+                    >
+                      <div className="relative w-full h-28 rounded-lg overflow-hidden flex items-center justify-center bg-slate-900">
+                        <img
+                          src={formatPhotoUrl(activity.photoUrl)}
+                          alt="Preview Foto Activity"
+                          referrerPolicy="no-referrer"
+                          onError={(e) => {
+                            e.currentTarget.src = DEFAULT_ACTIVITY_PHOTO;
+                          }}
+                          className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                        />
+                      </div>
+                    </button>
                   </div>
 
                   <div className="border-t border-slate-100 my-2 pt-2 space-y-2">
@@ -350,7 +388,7 @@ export const MapView: React.FC<MapViewProps> = ({
       </MapContainer>
 
       {/* Layer Control Switcher */}
-      <div className="absolute top-3 left-3 z-[1000] flex items-center gap-1 bg-white/90 backdrop-blur-md p-1.5 rounded-xl border border-slate-200/80 shadow-md">
+      <div className="absolute top-3 right-3 z-[1000] flex items-center gap-1 bg-white/90 backdrop-blur-md p-1.5 rounded-xl border border-slate-200/80 shadow-md">
         <Layers className="w-3.5 h-3.5 text-slate-500 ml-1.5 mr-0.5" />
         {(Object.keys(TILE_LAYERS) as (keyof typeof TILE_LAYERS)[]).map(key => (
           <button

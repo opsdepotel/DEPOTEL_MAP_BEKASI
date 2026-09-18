@@ -16,6 +16,7 @@ import { Navbar } from './components/Navbar';
 import { MapView } from './components/MapView';
 import { ActivityList } from './components/ActivityList';
 import { AddActivityModal } from './components/AddActivityModal';
+import { ActivityDetailModal } from './components/ActivityDetailModal';
 import { StatsOverview } from './components/StatsOverview';
 
 import { MapPin, AlertCircle, RefreshCw, FileSpreadsheet, PlusCircle } from 'lucide-react';
@@ -63,6 +64,7 @@ export default function App() {
 
   // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [photoModalActivity, setPhotoModalActivity] = useState<TeamActivity | null>(null);
 
   // Quota Event Listener
   useEffect(() => {
@@ -406,6 +408,7 @@ export default function App() {
               selectedActivity={selectedActivity}
               selectedUserId={selectedUserId}
               onSelectActivity={setSelectedActivity}
+              onViewPhoto={setPhotoModalActivity}
               showTrail={showTrail}
             />
           </div>
@@ -421,6 +424,7 @@ export default function App() {
               onFilterChange={setFilter}
               selectedActivity={selectedActivity}
               onSelectActivity={setSelectedActivity}
+              onViewPhoto={setPhotoModalActivity}
               selectedUserId={selectedUserId}
               onSelectUser={userId => {
                 setSelectedUserId(userId);
@@ -465,6 +469,12 @@ export default function App() {
         onClose={() => setIsAddModalOpen(false)}
         users={users}
         onAddActivity={handleAddActivity}
+      />
+
+      <ActivityDetailModal
+        activity={photoModalActivity}
+        isOpen={!!photoModalActivity}
+        onClose={() => setPhotoModalActivity(null)}
       />
 
     </div>
