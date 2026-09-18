@@ -1,5 +1,12 @@
-import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import React, { useEffect, useState, useMemo } from 'react';
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  Polyline,
+  useMap,
+} from 'react-leaflet';
 import L from 'leaflet';
 import { TeamUser, TeamActivity } from '../types';
 import { formatPhotoUrl, DEFAULT_ACTIVITY_PHOTO } from '../utils/photo';
@@ -23,48 +30,76 @@ interface MapViewProps {
   showTrail: boolean;
 }
 
-// Tile Layer configurations for Leaflet
-const TILE_LAYERS = {
-  osm: {
-    name: 'OpenStreetMap',
-    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-  },
-  satellite: {
-    name: 'Satelit Esri',
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
-  },
-};
-
-// Component to handle auto-centering and bounds fitting
+// Controller to auto-pan and zoom when selectedActivity or bounds change
 const MapController: React.FC<{
-  activities: TeamActivity[];
   selectedActivity: TeamActivity | null;
-}> = ({ activities, selectedActivity }) => {
+  activities: TeamActivity[];
+}> = ({ selectedActivity, activities }) => {
   const map = useMap();
+
+  // Invalidate map size on initial mount so tiles always render completely
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [map]);
 
   useEffect(() => {
     if (selectedActivity && !isNaN(selectedActivity.lat) && !isNaN(selectedActivity.lng)) {
       map.flyTo([selectedActivity.lat, selectedActivity.lng], 16, {
-        animate: true,
         duration: 0.8,
       });
-    } else if (activities.length > 0) {
-      const validPoints = activities
-        .filter(a => !isNaN(a.lat) && !isNaN(a.lng))
-        .map(a => [a.lat, a.lng] as [number, number]);
-
-      if (validPoints.length > 0) {
-        const bounds = L.latLngBounds(validPoints);
-        if (bounds.isValid()) {
-          map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
-        }
+    } else if (!selectedActivity && activities.length > 0) {
+      const validActivities = activities.filter(a => !isNaN(a.lat) && !isNaN(a.lng));
+      if (validActivities.length > 0) {
+        const bounds = L.latLngBounds(validActivities.map(a => [a.lat, a.lng]));
+        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
       }
     }
-  }, [map, selectedActivity, activities]);
+  }, [selectedActivity, activities, map]);
 
   return null;
+};
+
+// Map Layer Providers (100% Free, NO API Key Required)
+interface TileLayerConfig {
+  name: string;
+  url: string;
+  attribution: string;
+  subdomains?: string;
+  maxZoom: number;
+}
+
+const TILE_LAYERS: Record<string, TileLayerConfig> = {
+  street: {
+    name: 'Jalan (Esri Street)',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, NRCAN, Esri Japan, METI, Esri China (Hong Kong), Esri (Thailand), TomTom',
+    subdomains: 'abc',
+    maxZoom: 19,
+  },
+  osm: {
+    name: 'OpenStreetMap',
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    subdomains: 'abc',
+    maxZoom: 19,
+  },
+  satellite: {
+    name: 'Satelit (Esri)',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+    subdomains: 'abc',
+    maxZoom: 19,
+  },
+  hot: {
+    name: 'Humanitarian (HOT)',
+    url: 'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Tiles style by <a href="https://www.hotosm.org/">HOT</a>',
+    subdomains: 'abc',
+    maxZoom: 19,
+  },
 };
 
 export const MapView: React.FC<MapViewProps> = ({
@@ -76,30 +111,9 @@ export const MapView: React.FC<MapViewProps> = ({
   onViewPhoto,
   showTrail,
 }) => {
-  const [activeTile, setActiveTile] = useState<'osm' | 'satellite'>('osm');
-  const markerRefs = useRef<{ [key: string]: L.Marker | null }>({});
+  const [activeLayer, setActiveLayer] = useState<keyof typeof TILE_LAYERS>('street');
 
-  // Auto-open popup when selectedActivity changes
-  useEffect(() => {
-    if (selectedActivity && markerRefs.current[selectedActivity.id]) {
-      const marker = markerRefs.current[selectedActivity.id];
-      if (marker) {
-        const timer = setTimeout(() => {
-          marker.openPopup();
-        }, 200);
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [selectedActivity]);
-
-  // Center around Jakarta / Indonesia or first activity
-  const defaultCenter = useMemo<[number, number]>(() => {
-    if (activities.length > 0 && !isNaN(activities[0].lat) && !isNaN(activities[0].lng)) {
-      return [activities[0].lat, activities[0].lng];
-    }
-    return [-6.2088, 106.8456];
-  }, [activities]);
-
+  // Helper to get user color
   const getUserColor = (userId: string, userName?: string) => {
     const u = users.find(
       user => user.id === userId || (userName && user.name.toLowerCase() === userName.toLowerCase())
@@ -120,7 +134,70 @@ export const MapView: React.FC<MapViewProps> = ({
     return u?.avatar;
   };
 
-  // Sequence Map for numbering markers (1, 2, 3...) chronologically per user
+  // Center around activities or default to Jakarta
+  const centerPosition: [number, number] = useMemo(() => {
+    if (activities.length > 0 && !isNaN(activities[0].lat) && !isNaN(activities[0].lng)) {
+      return [activities[0].lat, activities[0].lng];
+    }
+    return [-6.2088, 106.8456]; // Jakarta
+  }, [activities]);
+
+  // Group activities per user for movement trail polylines
+  const userTrails = useMemo(() => {
+    if (!showTrail) return [];
+
+    const userGroups = new Map<string, { user: TeamUser | null; name: string; acts: TeamActivity[] }>();
+
+    activities.forEach(act => {
+      if (isNaN(act.lat) || isNaN(act.lng)) return;
+
+      const matchedUser = users.find(
+        u => u.id === act.userId || u.name.toLowerCase() === act.userName.toLowerCase() || (u.email && act.userId.includes(u.email))
+      );
+
+      const groupKey = matchedUser ? matchedUser.id : act.userName.toLowerCase();
+
+      if (!userGroups.has(groupKey)) {
+        userGroups.set(groupKey, {
+          user: matchedUser || null,
+          name: act.userName,
+          acts: [],
+        });
+      }
+      userGroups.get(groupKey)!.acts.push(act);
+    });
+
+    const trails: { userId: string; color: string; positions: [number, number][] }[] = [];
+
+    userGroups.forEach((group, groupKey) => {
+      if (selectedUserId !== 'ALL') {
+        const selectedUserObj = users.find(u => u.id === selectedUserId);
+        const matchesSelected =
+          groupKey === selectedUserId ||
+          (selectedUserObj && group.name.toLowerCase() === selectedUserObj.name.toLowerCase());
+        if (!matchesSelected) return;
+      }
+
+      const sortedActs = [...group.acts].sort((a, b) => {
+        const timeA = `${a.date || ''} ${a.time || ''}`;
+        const timeB = `${b.date || ''} ${b.time || ''}`;
+        return timeA.localeCompare(timeB);
+      });
+
+      if (sortedActs.length >= 2) {
+        const color = group.user?.color || getUserColor(groupKey, group.name);
+        trails.push({
+          userId: groupKey,
+          color,
+          positions: sortedActs.map(a => [a.lat, a.lng]),
+        });
+      }
+    });
+
+    return trails;
+  }, [activities, selectedUserId, showTrail, users]);
+
+  // Sequence Map: Give each activity a chronological 1, 2, 3... index per user
   const userActivitySeq = useMemo(() => {
     const seqMap = new Map<string, number>();
     const grouped = new Map<string, TeamActivity[]>();
@@ -149,61 +226,8 @@ export const MapView: React.FC<MapViewProps> = ({
     return seqMap;
   }, [activities, users]);
 
-  // Group activities per user for drawing route polylines in chronological order
-  const userPolylines = useMemo(() => {
-    if (!showTrail) return [];
-
-    const userGroups = new Map<string, { user: TeamUser | null; name: string; acts: TeamActivity[] }>();
-
-    activities.forEach(act => {
-      if (isNaN(act.lat) || isNaN(act.lng)) return;
-
-      const matchedUser = users.find(
-        u => u.id === act.userId || u.name.toLowerCase() === act.userName.toLowerCase() || (u.email && act.userId.includes(u.email))
-      );
-
-      const groupKey = matchedUser ? matchedUser.id : act.userName.toLowerCase();
-
-      if (!userGroups.has(groupKey)) {
-        userGroups.set(groupKey, {
-          user: matchedUser || null,
-          name: act.userName,
-          acts: [],
-        });
-      }
-      userGroups.get(groupKey)!.acts.push(act);
-    });
-
-    const result: { userId: string; color: string; path: [number, number][] }[] = [];
-
-    userGroups.forEach((group, groupKey) => {
-      if (selectedUserId !== 'ALL') {
-        const selectedUserObj = users.find(u => u.id === selectedUserId);
-        const matchesSelected =
-          groupKey === selectedUserId ||
-          (selectedUserObj && group.name.toLowerCase() === selectedUserObj.name.toLowerCase());
-        if (!matchesSelected) return;
-      }
-
-      // Sort activities chronologically by date and time from earliest to latest
-      const sortedActs = [...group.acts].sort((a, b) => {
-        const timeA = `${a.date || ''} ${a.time || ''}`;
-        const timeB = `${b.date || ''} ${b.time || ''}`;
-        return timeA.localeCompare(timeB);
-      });
-
-      if (sortedActs.length >= 2) {
-        const color = group.user?.color || getUserColor(groupKey, group.name);
-        const path = sortedActs.map(a => [a.lat, a.lng] as [number, number]);
-        result.push({ userId: groupKey, color, path });
-      }
-    });
-
-    return result;
-  }, [activities, selectedUserId, showTrail, users]);
-
-  // Create custom Leaflet DivIcon for markers
-  const createMarkerIcon = (activity: TeamActivity, isSelected: boolean) => {
+  // Create Custom Avatar Pin Icon
+  const createCustomIcon = (activity: TeamActivity, isSelected: boolean) => {
     const color = getUserColor(activity.userId, activity.userName);
     const avatar = getUserAvatar(activity.userId);
     const initial = (activity.userName && activity.userName.trim().length > 0)
@@ -212,79 +236,154 @@ export const MapView: React.FC<MapViewProps> = ({
     const seqNum = userActivitySeq.get(activity.id) || 1;
 
     const html = `
-      <div style="display: flex; flex-direction: column; align-items: center; cursor: pointer; transform: ${isSelected ? 'scale(1.2)' : 'scale(1)'}; transition: transform 0.2s ease; position: relative;">
+      <div class="custom-map-pin" style="position: relative; display: flex; flex-direction: column; align-items: center; cursor: pointer; transform: ${isSelected ? 'scale(1.2)' : 'scale(1)'}; transition: transform 0.2s ease;">
         <!-- Chronological Sequence Badge (#1, #2, #3...) -->
-        <div style="position: absolute; top: -6px; right: -6px; background-color: #0f172a; color: white; border: 1.5px solid white; border-radius: 9999px; font-size: 10px; font-weight: 800; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.3); z-index: 10;">
+        <div style="
+          position: absolute;
+          top: -6px;
+          right: -6px;
+          background-color: #0f172a;
+          color: white;
+          border: 1.5px solid white;
+          border-radius: 9999px;
+          font-size: 10px;
+          font-weight: 800;
+          width: 18px;
+          height: 18px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+          z-index: 10;
+        ">
           ${seqNum}
         </div>
-        <div style="width: 36px; height: 36px; border-radius: 50%; border: 2.5px solid ${color}; background-color: white; overflow: hidden; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+
+        <!-- Avatar Circle -->
+        <div style="
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          border: 2.5px solid ${color};
+          background-color: white;
+          overflow: hidden;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 4px 8px rgba(0,0,0,0.25);
+        ">
           ${
             avatar
-              ? `<img src="${avatar}" style="width:100%; height:100%; object-fit:cover;" />`
-              : `<div style="width:100%; height:100%; background-color:${color}; color:white; font-weight:bold; font-size:14px; display:flex; align-items:center; justify-content:center; text-transform:uppercase;">${initial}</div>`
+              ? `<img src="${avatar}" style="width: 100%; height: 100%; object-fit: cover;" />`
+              : `<div style="width: 100%; height: 100%; background-color: ${color}; color: white; font-weight: bold; font-size: 14px; display: flex; align-items: center; justify-content: center; text-transform: uppercase;">${initial}</div>`
           }
         </div>
-        <div style="width: 10px; height: 10px; background-color: ${color}; transform: rotate(45deg); margin-top: -6px; border-bottom-right-radius: 2px;"></div>
+        
+        <!-- Pin Point Indicator -->
+        <div style="
+          width: 10px;
+          height: 10px;
+          background-color: ${color};
+          transform: rotate(45deg);
+          margin-top: -6px;
+          border-bottom-right-radius: 2px;
+        "></div>
       </div>
     `;
 
     return L.divIcon({
-      className: 'custom-leaflet-div-icon',
+      className: 'custom-leaflet-icon',
       html,
       iconSize: [40, 42],
       iconAnchor: [20, 42],
-      popupAnchor: [155, 135],
+      popupAnchor: [155, 135], // Anchor badge to the right side of the marker
     });
   };
 
   return (
     <div className="relative w-full h-full min-h-[450px] bg-slate-100 rounded-2xl overflow-hidden border border-slate-200 shadow-inner flex flex-col z-0">
       
-      {/* Leaflet MapContainer */}
+      {/* Floating Basemap Selector */}
+      <div className="absolute top-3 left-3 z-[1000] flex items-center gap-1.5 bg-white/95 backdrop-blur-md px-2 py-1.5 rounded-xl border border-slate-200/90 shadow-md">
+        <Layers className="w-3.5 h-3.5 text-slate-500 ml-1" />
+        <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+          {(Object.keys(TILE_LAYERS) as Array<keyof typeof TILE_LAYERS>).map((layerKey) => (
+            <button
+              key={layerKey}
+              onClick={() => setActiveLayer(layerKey)}
+              className={`px-2 py-1 text-xs font-semibold rounded-md transition cursor-pointer ${
+                activeLayer === layerKey
+                  ? 'bg-white text-indigo-600 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              {TILE_LAYERS[layerKey].name}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Main Map Container */}
       <MapContainer
-        center={defaultCenter}
+        center={centerPosition}
         zoom={11}
         scrollWheelZoom={true}
-        style={{ width: '100%', height: '100%', flex: 1 }}
-        className="z-0"
+        className="w-full h-full flex-1 z-0"
+        attributionControl={true}
       >
-        <TileLayer
-          attribution={TILE_LAYERS[activeTile].attribution}
-          url={TILE_LAYERS[activeTile].url}
+        <MapController
+          selectedActivity={selectedActivity}
+          activities={activities}
         />
 
-        {/* Map Bounds & Zoom Controller */}
-        <MapController activities={activities} selectedActivity={selectedActivity} />
+        <TileLayer
+          key={activeLayer}
+          url={TILE_LAYERS[activeLayer].url}
+          attribution={TILE_LAYERS[activeLayer].attribution}
+          subdomains={TILE_LAYERS[activeLayer].subdomains}
+          maxZoom={TILE_LAYERS[activeLayer].maxZoom}
+        />
 
-        {/* Polyline Movement Trails */}
-        {userPolylines.map(line => (
-          <Polyline
-            key={line.userId}
-            positions={line.path}
-            pathOptions={{
-              color: line.color,
-              weight: 4,
-              opacity: 0.85,
-              dashArray: '8, 8',
-            }}
-          />
-        ))}
+        {/* Movement Trails */}
+        {showTrail &&
+          userTrails.map((trail, index) => (
+            <React.Fragment key={`trail-fragment-${trail.userId}-${index}`}>
+              {/* Outer Glow / Casing */}
+              <Polyline
+                positions={trail.positions}
+                pathOptions={{
+                  color: '#ffffff',
+                  weight: 6,
+                  opacity: 0.9,
+                  lineCap: 'round',
+                  lineJoin: 'round',
+                }}
+              />
+              {/* Inner Dashed Line */}
+              <Polyline
+                positions={trail.positions}
+                pathOptions={{
+                  color: trail.color,
+                  weight: 3.5,
+                  opacity: 0.95,
+                  dashArray: '8, 8',
+                  lineCap: 'round',
+                  lineJoin: 'round',
+                }}
+              />
+            </React.Fragment>
+          ))}
 
         {/* Activity Markers */}
         {activities.map(activity => {
           if (isNaN(activity.lat) || isNaN(activity.lng)) return null;
 
           const isSelected = selectedActivity?.id === activity.id;
-          const icon = createMarkerIcon(activity, isSelected);
+          const icon = createCustomIcon(activity, isSelected);
 
           return (
             <Marker
               key={activity.id}
-              ref={ref => {
-                if (ref) {
-                  markerRefs.current[activity.id] = ref;
-                }
-              }}
               position={[activity.lat, activity.lng]}
               icon={icon}
               eventHandlers={{
@@ -370,25 +469,6 @@ export const MapView: React.FC<MapViewProps> = ({
           );
         })}
       </MapContainer>
-
-      {/* Layer Control Switcher */}
-      <div className="absolute top-3 right-3 z-[1000] flex items-center gap-1 bg-white/90 backdrop-blur-md p-1.5 rounded-xl border border-slate-200/80 shadow-md">
-        <Layers className="w-3.5 h-3.5 text-slate-500 ml-1.5 mr-0.5" />
-        {(Object.keys(TILE_LAYERS) as (keyof typeof TILE_LAYERS)[]).map(key => (
-          <button
-            key={key}
-            onClick={() => setActiveTile(key)}
-            className={`px-2.5 py-1 text-xs font-semibold rounded-lg capitalize transition ${
-              activeTile === key
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-slate-600 hover:bg-slate-100'
-            }`}
-          >
-            {TILE_LAYERS[key].name}
-          </button>
-        ))}
-      </div>
-
     </div>
   );
 };
