@@ -18,6 +18,8 @@ interface NavbarProps {
   fetchState: SheetFetchState;
   onRefresh: () => void;
   onOpenAddModal: () => void;
+  activeCluster?: string;
+  onResetCluster?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -29,6 +31,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   fetchState,
   onRefresh,
   onOpenAddModal,
+  activeCluster,
+  onResetCluster,
 }) => {
   return (
     <header className="bg-gradient-to-r from-blue-950 via-slate-950 to-black text-white border-b border-slate-800/80 sticky top-0 z-40 shadow-lg">
@@ -41,10 +45,24 @@ export const Navbar: React.FC<NavbarProps> = ({
               <MapPin className="w-6 h-6 text-white" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="font-bold text-lg text-slate-100 tracking-tight leading-tight">
                   Peta Lokasi Kegiatan Operasional
                 </h1>
+                {activeCluster && activeCluster !== 'ALL' && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs">
+                    <span>Cluster: {activeCluster.toUpperCase()}</span>
+                    {onResetCluster && (
+                      <button
+                        onClick={onResetCluster}
+                        title="Tampilkan semua cluster"
+                        className="hover:text-white transition cursor-pointer font-black text-emerald-300 hover:text-emerald-100"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </span>
+                )}
               </div>
               <p className="text-xs text-slate-400 hidden sm:block">
                 Monitoring kegiatan harian team

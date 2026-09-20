@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import {
   MapContainer,
   TileLayer,
@@ -386,6 +386,16 @@ export const MapView: React.FC<MapViewProps> = ({
               key={activity.id}
               position={[activity.lat, activity.lng]}
               icon={icon}
+              ref={(ref) => {
+                if (ref && isSelected) {
+                  // Delay slightly so the map flyTo animation settles nicely before opening popup
+                  setTimeout(() => {
+                    if (!ref.isPopupOpen()) {
+                      ref.openPopup();
+                    }
+                  }, 350);
+                }
+              }}
               eventHandlers={{
                 click: () => onSelectActivity(activity),
               }}

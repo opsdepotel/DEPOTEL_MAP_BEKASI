@@ -21,6 +21,26 @@ import { StatsOverview } from './components/StatsOverview';
 
 import { MapPin, AlertCircle, RefreshCw, FileSpreadsheet, PlusCircle } from 'lucide-react';
 
+// Extract initial cluster from URL (pathname e.g. /bekasi, /southern or query param ?cluster=bekasi)
+export function getClusterFromUrl(): string {
+  if (typeof window === 'undefined') return 'ALL';
+
+  // 1. Check query parameter: ?cluster=...
+  const searchParams = new URLSearchParams(window.location.search);
+  const clusterQuery = searchParams.get('cluster');
+  if (clusterQuery && clusterQuery.trim()) {
+    return clusterQuery.trim();
+  }
+
+  // 2. Check path slug: /bekasi, /southern, etc.
+  const pathname = window.location.pathname.replace(/^\/+|\/+$/g, '').trim();
+  if (pathname && !pathname.includes('.') && pathname.toLowerCase() !== 'index.html') {
+    return decodeURIComponent(pathname);
+  }
+
+  return 'ALL';
+}
+
 export default function App() {
   // Auth States
   const [user, setUser] = useState<FirebaseUser | null>(null);
@@ -51,7 +71,7 @@ export default function App() {
 
   const todayStr = new Date().toISOString().split('T')[0];
 
-  const [filter, setFilter] = useState<ActivityFilter>({
+  const [filter, setFilter] = useState<ActivityFilter>(() => ({
     searchQuery: '',
     userId: 'ALL',
     selectedDate: todayStr,
@@ -59,8 +79,48 @@ export default function App() {
     status: 'ALL',
     division: 'ALL',
     subDivision: 'ALL',
-    cluster: 'BEKASI',
-  });
+    cluster: getClusterFromUrl(),
+  }));
+
+  // Sync cluster filter if browser navigation (Back/Forward) changes URL
+  useEffect(() => {
+    const handleLocationChange = () => {
+      const urlCluster = getClusterFromUrl();
+      setFilter(prev => {
+        if (prev.cluster.toLowerCase() !== urlCluster.toLowerCase()) {
+          return { ...prev, cluster: urlCluster };
+        }
+        return prev;
+      });
+    };
+
+    window.addEventListener('popstate', handleLocationChange);
+    return () => window.removeEventListener('popstate', handleLocationChange);
+  }, []);
+
+  // Update filter and synchronize cluster into URL
+  const handleFilterChange = useCallback((newFilter: ActivityFilter) => {
+    setFilter(newFilter);
+
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      if (newFilter.cluster && newFilter.cluster !== 'ALL') {
+        // If user is accessing via pathname slug (e.g. /bekasi or /southern)
+        if (url.pathname !== '/' && !url.pathname.includes('.')) {
+          url.pathname = `/${encodeURIComponent(newFilter.cluster.toLowerCase())}`;
+          url.searchParams.delete('cluster');
+        } else {
+          url.searchParams.set('cluster', newFilter.cluster);
+        }
+      } else {
+        url.searchParams.delete('cluster');
+        if (url.pathname !== '/' && !url.pathname.includes('.')) {
+          url.pathname = '/';
+        }
+      }
+      window.history.pushState({}, '', url.toString());
+    }
+  }, []);
 
   // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -180,13 +240,16 @@ export default function App() {
     });
   }, []);
 
-  // Filter users by Division (Column G), Sub Division (Column H), and Cluster BEKASI (Column O)
+  // Filter users by Division (Column G), Sub Division (Column H), and Cluster (Column O)
   const filteredUsers = useMemo(() => {
     return users.filter(u => {
-      // Cluster Filter (Enforce Cluster BEKASI from Column O)
-      const uCluster = (u.cluster || '').trim().toLowerCase();
-      if (uCluster && !uCluster.includes('bekasi')) {
-        return false;
+      // Cluster Filter (Column O)
+      if (filter.cluster && filter.cluster !== 'ALL') {
+        const targetCluster = filter.cluster.trim().toLowerCase();
+        const uCluster = (u.cluster || '').trim().toLowerCase();
+        if (!uCluster || (!uCluster.includes(targetCluster) && !targetCluster.includes(uCluster))) {
+          return false;
+        }
       }
 
       // Division Filter (Column G)
@@ -211,10 +274,10 @@ export default function App() {
 
       return true;
     });
-  }, [users, filter.division, filter.subDivision]);
+  }, [users, filter.division, filter.subDivision, filter.cluster]);
 
-  // Filtered Activities
-  const filteredActivities = useMemo(() => {
+  // Base Filtered Activities (Filtered by Date, SubDiv, Category, Search Query, etc. EXCLUDING selectedUserId)
+  const baseFilteredActivities = useMemo(() => {
     // Helper to normalize date strings to YYYY-MM-DD
     const normalizeDate = (dStr: string) => {
       if (!dStr) return '';
@@ -240,10 +303,13 @@ export default function App() {
     return activities.filter(act => {
       const userObj = findUserForActivity(act, users);
 
-      // Cluster Filter: If explicit cluster is defined, exclude if it's NOT Bekasi
-      const joinedCluster = (act.userCluster || userObj?.cluster || '').trim().toLowerCase();
-      if (joinedCluster && !joinedCluster.includes('bekasi')) {
-        return false;
+      // Cluster Filter: Dynamic based on filter.cluster
+      if (filter.cluster && filter.cluster !== 'ALL') {
+        const targetCluster = filter.cluster.trim().toLowerCase();
+        const joinedCluster = (act.userCluster || userObj?.cluster || '').trim().toLowerCase();
+        if (!joinedCluster || (!joinedCluster.includes(targetCluster) && !targetCluster.includes(joinedCluster))) {
+          return false;
+        }
       }
 
       // Division Filter (Column G)
@@ -283,11 +349,6 @@ export default function App() {
         }
       }
 
-      // User Filter
-      if (selectedUserId !== 'ALL' && act.userId !== selectedUserId) {
-        return false;
-      }
-
       // Date Filter
       if (filter.selectedDate && filter.selectedDate !== 'ALL') {
         const actDate = normalizeDate(act.date);
@@ -319,7 +380,20 @@ export default function App() {
 
       return true;
     });
-  }, [activities, users, selectedUserId, filter]);
+  }, [activities, users, filter, findUserForActivity]);
+
+  // Filtered Activities for Map and Stats (further filtered by selectedUserId)
+  const filteredActivities = useMemo(() => {
+    if (selectedUserId === 'ALL') return baseFilteredActivities;
+    return baseFilteredActivities.filter(act => {
+      const userObj = findUserForActivity(act, users);
+      const isMatch =
+        act.userId === selectedUserId ||
+        (userObj && userObj.id === selectedUserId) ||
+        (selectedUserId && act.userName.toLowerCase() === selectedUserId.toLowerCase());
+      return isMatch;
+    });
+  }, [baseFilteredActivities, selectedUserId, users, findUserForActivity]);
 
   // Add new activity
   const handleAddActivity = (newActivity: TeamActivity) => {
@@ -358,6 +432,8 @@ export default function App() {
         fetchState={fetchState}
         onRefresh={() => loadData(sheetId, token)}
         onOpenAddModal={() => setIsAddModalOpen(true)}
+        activeCluster={filter.cluster}
+        onResetCluster={() => handleFilterChange({ ...filter, cluster: 'ALL' })}
       />
 
       {/* Main Container */}
@@ -416,12 +492,12 @@ export default function App() {
           {/* Side Controls & Activities Column */}
           <div className="lg:col-span-4 xl:col-span-3 flex flex-col gap-4">
             
-            {/* Filterable Activity Feed */}
+            {/* Filterable Active Users & Activity Feed */}
             <ActivityList
-              activities={filteredActivities}
+              activities={baseFilteredActivities}
               users={filteredUsers}
               filter={filter}
-              onFilterChange={setFilter}
+              onFilterChange={handleFilterChange}
               selectedActivity={selectedActivity}
               onSelectActivity={setSelectedActivity}
               onViewPhoto={setPhotoModalActivity}
@@ -434,7 +510,13 @@ export default function App() {
                     a => a.userId === userId || (targetUser && a.userName.toLowerCase() === targetUser.name.toLowerCase())
                   );
                   if (userActs.length > 0) {
-                    setSelectedActivity(userActs[0]);
+                    // Sort descending by date & time so the latest activity is selected and focused on the map
+                    const sorted = [...userActs].sort((a, b) => {
+                      const timeA = `${a.date || ''} ${a.time || ''}`;
+                      const timeB = `${b.date || ''} ${b.time || ''}`;
+                      return timeB.localeCompare(timeA);
+                    });
+                    setSelectedActivity(sorted[0]);
                   } else {
                     setSelectedActivity(null);
                   }

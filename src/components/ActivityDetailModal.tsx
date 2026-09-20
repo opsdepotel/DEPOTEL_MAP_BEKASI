@@ -192,9 +192,9 @@ export const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
                         {activity.userSubDivision}
                       </span>
                     )}
-                    {(activity.userCluster || 'BEKASI') && (
+                    {activity.userCluster && (
                       <span className="px-2 py-0.5 text-[10px] font-bold bg-blue-100 text-blue-800 rounded">
-                        {activity.userCluster || 'BEKASI'}
+                        {activity.userCluster}
                       </span>
                     )}
                   </div>
