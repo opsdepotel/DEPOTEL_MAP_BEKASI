@@ -49,7 +49,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </h1>
                 {activeCluster && activeCluster !== 'ALL' && (
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs">
-                    Cluster: {activeCluster.toUpperCase()}
+                    {activeCluster.charAt(0).toUpperCase() + activeCluster.slice(1).toLowerCase()}
                   </span>
                 )}
               </div>
