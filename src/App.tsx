@@ -17,7 +17,6 @@ import { MapView } from './components/MapView';
 import { ActivityList } from './components/ActivityList';
 import { AddActivityModal } from './components/AddActivityModal';
 import { ActivityDetailModal } from './components/ActivityDetailModal';
-import { StatsOverview } from './components/StatsOverview';
 
 import { MapPin, AlertCircle, RefreshCw, FileSpreadsheet, PlusCircle } from 'lucide-react';
 
@@ -98,28 +97,9 @@ export default function App() {
     return () => window.removeEventListener('popstate', handleLocationChange);
   }, []);
 
-  // Update filter and synchronize cluster into URL
+  // Update filter
   const handleFilterChange = useCallback((newFilter: ActivityFilter) => {
     setFilter(newFilter);
-
-    if (typeof window !== 'undefined') {
-      const url = new URL(window.location.href);
-      if (newFilter.cluster && newFilter.cluster !== 'ALL') {
-        // If user is accessing via pathname slug (e.g. /bekasi or /southern)
-        if (url.pathname !== '/' && !url.pathname.includes('.')) {
-          url.pathname = `/${encodeURIComponent(newFilter.cluster.toLowerCase())}`;
-          url.searchParams.delete('cluster');
-        } else {
-          url.searchParams.set('cluster', newFilter.cluster);
-        }
-      } else {
-        url.searchParams.delete('cluster');
-        if (url.pathname !== '/' && !url.pathname.includes('.')) {
-          url.pathname = '/';
-        }
-      }
-      window.history.pushState({}, '', url.toString());
-    }
   }, []);
 
   // Modals
@@ -433,7 +413,6 @@ export default function App() {
         onRefresh={() => loadData(sheetId, token)}
         onOpenAddModal={() => setIsAddModalOpen(true)}
         activeCluster={filter.cluster}
-        onResetCluster={() => handleFilterChange({ ...filter, cluster: 'ALL' })}
       />
 
       {/* Main Container */}
@@ -469,9 +448,6 @@ export default function App() {
         )}
 
 
-
-        {/* Stats Overview with Badges */}
-        <StatsOverview activities={filteredActivities} users={filteredUsers} />
 
         {/* Main Grid: Map (Left/Top) + Team Sidebar & List (Right/Bottom) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 items-start">

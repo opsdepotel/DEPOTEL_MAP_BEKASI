@@ -409,6 +409,9 @@ function parseUsersRows(rows: string[][]): TeamUser[] {
     const team = divisionCol;
     const division = divisionCol;
     let subDivision = (subDivIdx !== -1 && row[subDivIdx] ? row[subDivIdx].trim() : colH) || '';
+    if (['-', '—', '–', 'none', 'null'].includes(subDivision.toLowerCase()) || subDivision.replace(/[-_.\s]/g, '') === '') {
+      subDivision = '';
+    }
 
     // Standardize Sub Division format
     if (subDivision.toUpperCase().includes('MBP')) {

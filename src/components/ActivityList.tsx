@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { TeamActivity, TeamUser, ActivityFilter } from '../types';
 import { formatWaktuDisplay, getSiteDisplay } from '../services/googleSheets';
+import { getUserInitials } from '../utils/user';
 import {
   Search,
   Calendar,
@@ -67,21 +68,6 @@ export const ActivityList: React.FC<ActivityListProps> = ({
       });
     }
   }, [selectedActivity]);
-
-  // Extract unique categories for filter dropdowns
-  const categories = Array.from(new Set(activities.map(a => a.category).filter(Boolean)));
-
-  // Extract unique clusters from users and activities
-  const availableClusters = useMemo(() => {
-    const set = new Set<string>();
-    users.forEach(u => {
-      if (u.cluster && u.cluster.trim()) set.add(u.cluster.trim().toUpperCase());
-    });
-    activities.forEach(a => {
-      if (a.userCluster && a.userCluster.trim()) set.add(a.userCluster.trim().toUpperCase());
-    });
-    return Array.from(set).sort();
-  }, [users, activities]);
 
   const getUserColor = (userId: string, userName?: string) => {
     const u = users.find(
@@ -264,29 +250,6 @@ export const ActivityList: React.FC<ActivityListProps> = ({
 
         {/* Filter Dropdowns Row */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
-          
-          {/* Cluster Filter Dropdown */}
-          <select
-            value={
-              filter.cluster === 'ALL'
-                ? 'ALL'
-                : availableClusters.find(c => c.toLowerCase() === filter.cluster.toLowerCase()) || filter.cluster
-            }
-            onChange={e => onFilterChange({ ...filter, cluster: e.target.value })}
-            className="px-2.5 py-1.5 text-xs bg-emerald-50/90 rounded-lg border border-emerald-200 text-emerald-950 font-bold focus:outline-none focus:border-emerald-500 shrink-0 cursor-pointer"
-          >
-            <option value="ALL">Semua Cluster</option>
-            {availableClusters.map(cl => (
-              <option key={cl} value={cl}>
-                Cluster {cl}
-              </option>
-            ))}
-            {filter.cluster !== 'ALL' &&
-              !availableClusters.some(c => c.toLowerCase() === filter.cluster.toLowerCase()) && (
-                <option value={filter.cluster}>Cluster {filter.cluster}</option>
-              )}
-          </select>
-
           {/* Sub Divisi Filter Dropdown (Kolom H: MR, CM, MBP) */}
           <select
             value={filter.subDivision || 'ALL'}
@@ -297,29 +260,17 @@ export const ActivityList: React.FC<ActivityListProps> = ({
             <option value="MR">Sub Divisi MR</option>
             <option value="CM">Sub Divisi CM</option>
             <option value="MBP">Sub Divisi MBP</option>
-            {Array.from(new Set(users.map(u => u.subDivision).filter(Boolean)))
-              .filter(sd => sd && !['all', 'mr', 'cm', 'mbp'].includes(sd.toString().toLowerCase()))
+            {Array.from(new Set(users.map(u => u.subDivision).filter((sd): sd is string => Boolean(sd))))
+              .filter(sd => {
+                const s = sd.trim().toLowerCase();
+                return s && !['all', 'mr', 'cm', 'mbp', '-', '—', '–', 'none', 'null'].includes(s) && s.replace(/[-_.\s]/g, '') !== '';
+              })
               .map(sd => (
                 <option key={sd} value={sd}>
                   Sub Divisi {sd}
                 </option>
               ))}
           </select>
-
-          {/* Category Dropdown */}
-          <select
-            value={filter.category}
-            onChange={e => onFilterChange({ ...filter, category: e.target.value })}
-            className="px-2.5 py-1.5 text-xs bg-slate-50 rounded-lg border border-slate-200 text-slate-700 font-medium focus:outline-none focus:border-blue-500 cursor-pointer"
-          >
-            <option value="ALL">Semua Kategori</option>
-            {categories.map(cat => (
-              <option key={cat} value={cat}>
-                {cat}
-              </option>
-            ))}
-          </select>
-
         </div>
 
       </div>
@@ -372,9 +323,7 @@ export const ActivityList: React.FC<ActivityListProps> = ({
             const isExpanded = expandedUsers[group.userId];
             const color = getUserColor(group.userId, group.userName);
             const avatar = getUserAvatar(group.userId);
-            const initial = (group.userName && group.userName.trim().length > 0)
-              ? group.userName.trim()[0].toUpperCase()
-              : 'U';
+            const initial = getUserInitials(group.userName);
             const cleanSubDivision = group.subDivision
               ? group.subDivision.replace(/^(sub\s*divisi\s*|subdivisi\s*)/i, '').trim()
               : '';
@@ -396,7 +345,9 @@ export const ActivityList: React.FC<ActivityListProps> = ({
                   <div className="flex items-start gap-3 min-w-0 flex-1">
                     {/* User Avatar (Icon Pengguna - tetap) */}
                     <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden border-2 shrink-0 text-xs font-bold text-white uppercase shadow-2xs mt-0.5"
+                      className={`w-10 h-10 rounded-full flex items-center justify-center overflow-hidden border-2 shrink-0 text-white uppercase shadow-2xs mt-0.5 ${
+                        initial.length > 1 ? 'text-[11px] font-extrabold tracking-tight' : 'text-xs font-bold'
+                      }`}
                       style={{ backgroundColor: color, borderColor: color }}
                     >
                       {avatar ? (

@@ -6,10 +6,12 @@ import {
   Popup,
   Polyline,
   useMap,
+  ZoomControl,
 } from 'react-leaflet';
 import L from 'leaflet';
 import { TeamUser, TeamActivity } from '../types';
 import { formatPhotoUrl, DEFAULT_ACTIVITY_PHOTO } from '../utils/photo';
+import { getUserInitials } from '../utils/user';
 import { getSiteDisplay, formatWaktuDisplay } from '../services/googleSheets';
 import {
   Clock,
@@ -230,9 +232,7 @@ export const MapView: React.FC<MapViewProps> = ({
   const createCustomIcon = (activity: TeamActivity, isSelected: boolean) => {
     const color = getUserColor(activity.userId, activity.userName);
     const avatar = getUserAvatar(activity.userId);
-    const initial = (activity.userName && activity.userName.trim().length > 0)
-      ? activity.userName.trim()[0].toUpperCase()
-      : 'U';
+    const initial = getUserInitials(activity.userName);
     const seqNum = userActivitySeq.get(activity.id) || 1;
 
     const html = `
@@ -275,7 +275,7 @@ export const MapView: React.FC<MapViewProps> = ({
           ${
             avatar
               ? `<img src="${avatar}" style="width: 100%; height: 100%; object-fit: cover;" />`
-              : `<div style="width: 100%; height: 100%; background-color: ${color}; color: white; font-weight: bold; font-size: 14px; display: flex; align-items: center; justify-content: center; text-transform: uppercase;">${initial}</div>`
+              : `<div style="width: 100%; height: 100%; background-color: ${color}; color: white; font-weight: 800; font-size: ${initial.length > 1 ? '11px' : '13px'}; display: flex; align-items: center; justify-content: center; text-transform: uppercase; letter-spacing: ${initial.length > 1 ? '-0.5px' : 'normal'};">${initial}</div>`
           }
         </div>
         
@@ -328,9 +328,12 @@ export const MapView: React.FC<MapViewProps> = ({
         center={centerPosition}
         zoom={11}
         scrollWheelZoom={true}
+        zoomControl={false}
         className="w-full h-full flex-1 z-0"
         attributionControl={true}
       >
+        <ZoomControl position="topright" />
+
         <MapController
           selectedActivity={selectedActivity}
           activities={activities}
