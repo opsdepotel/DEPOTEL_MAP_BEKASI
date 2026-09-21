@@ -96,19 +96,23 @@ export const ActivityList: React.FC<ActivityListProps> = ({
     const map = new Map<string, { user: TeamUser | null; userName: string; acts: TeamActivity[] }>();
 
     activities.forEach(act => {
-      const matchedUser = users.find(u => {
-        const uEmail = (u.email || '').trim().toLowerCase();
-        const uId = u.id.trim().toLowerCase();
-        const uName = u.name.trim().toLowerCase();
-        const actEmail = (act.userEmail || '').trim().toLowerCase();
-        const actUserId = (act.userId || '').trim().toLowerCase();
-        const actUserName = (act.userName || '').trim().toLowerCase();
+      const actEmail = (act.userEmail || '').trim().toLowerCase();
+      const actUserId = (act.userId || '').trim().toLowerCase();
+      const actUserName = (act.userName || '').trim().toLowerCase();
 
-        if (actEmail && uEmail && actEmail === uEmail) return true;
-        if (actUserId && (uId === actUserId || uEmail === actUserId || actUserId.includes(uEmail))) return true;
-        if (actUserName && (uName === actUserName || uName.includes(actUserName) || actUserName.includes(uName))) return true;
-        return false;
-      });
+      // 1. Highest Priority: Match by exact email
+      let matchedUser: TeamUser | undefined;
+      if (actEmail) {
+        matchedUser = users.find(u => u.email && u.email.trim().toLowerCase() === actEmail);
+      }
+      // 2. Second Priority: Match by exact user ID
+      if (!matchedUser && actUserId) {
+        matchedUser = users.find(u => u.id.trim().toLowerCase() === actUserId || (u.email && u.email.trim().toLowerCase() === actUserId));
+      }
+      // 3. Third Priority: Match by exact full name
+      if (!matchedUser && actUserName) {
+        matchedUser = users.find(u => u.name.trim().toLowerCase() === actUserName);
+      }
 
       const groupKey = matchedUser ? matchedUser.id : (act.userId || act.userName.toLowerCase());
       const displayName = matchedUser ? matchedUser.name : act.userName;
@@ -147,7 +151,7 @@ export const ActivityList: React.FC<ActivityListProps> = ({
         user: value.user,
         userId: groupKey,
         userName: value.userName,
-        subDivision: value.user?.subDivision || value.user?.team || sortedActs[0]?.userSubDivision || sortedActs[0]?.userTeam,
+        subDivision: value.user?.subDivision || sortedActs[0]?.userSubDivision || value.user?.team || sortedActs[0]?.userTeam,
         activitiesCount: sortedActs.length,
         userActivities: sortedActs,
         latestActivity: sortedActs[0] || null,
@@ -319,6 +323,8 @@ export const ActivityList: React.FC<ActivityListProps> = ({
           activeUsers.map(group => {
             const isUserSelected =
               selectedUserId === group.userId ||
+              (selectedUserObj && selectedUserObj.id === group.userId) ||
+              (selectedUserObj && selectedUserObj.email && group.user?.email && selectedUserObj.email.toLowerCase() === group.user.email.toLowerCase()) ||
               (selectedUserObj && selectedUserObj.name.toLowerCase() === group.userName.toLowerCase());
             const isExpanded = expandedUsers[group.userId];
             const color = getUserColor(group.userId, group.userName);

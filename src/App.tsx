@@ -196,28 +196,30 @@ export default function App() {
   };
 
   // Helper to find User for an Activity via Activity.UserEmail <> Users.Email join
-  const findUserForActivity = useCallback((act: TeamActivity, userList: TeamUser[]) => {
+  const findUserForActivity = useCallback((act: TeamActivity, userList: TeamUser[]): TeamUser | undefined => {
     const actEmail = (act.userEmail || '').trim().toLowerCase();
     const actUserId = (act.userId || '').trim().toLowerCase();
     const actUserName = (act.userName || '').trim().toLowerCase();
 
-    return userList.find(u => {
-      const uEmail = (u.email || '').trim().toLowerCase();
-      const uId = u.id.trim().toLowerCase();
-      const uName = u.name.trim().toLowerCase();
+    // 1. Highest Priority: Match by exact email
+    if (actEmail) {
+      const matchByEmail = userList.find(u => u.email && u.email.trim().toLowerCase() === actEmail);
+      if (matchByEmail) return matchByEmail;
+    }
 
-      // Primary JOIN Key: Activity.UserEmail === Users.Email
-      if (actEmail && uEmail && actEmail === uEmail) {
-        return true;
-      }
-      if (actUserId && (uId === actUserId || uEmail === actUserId || (uEmail && actUserId.includes(uEmail)))) {
-        return true;
-      }
-      if (actUserName && (uName === actUserName || uName.includes(actUserName) || actUserName.includes(uName))) {
-        return true;
-      }
-      return false;
-    });
+    // 2. Second Priority: Match by exact user ID
+    if (actUserId) {
+      const matchById = userList.find(u => u.id.trim().toLowerCase() === actUserId || (u.email && u.email.trim().toLowerCase() === actUserId));
+      if (matchById) return matchById;
+    }
+
+    // 3. Third Priority: Match by exact full name (exact equality, not substring includes)
+    if (actUserName) {
+      const matchByName = userList.find(u => u.name.trim().toLowerCase() === actUserName);
+      if (matchByName) return matchByName;
+    }
+
+    return undefined;
   }, []);
 
   // Filter users by Division (Column G), Sub Division (Column H), and Cluster (Column O)
@@ -313,7 +315,7 @@ export default function App() {
       // Sub Division Filter (Column H - e.g. MR, CM, MBP)
       if (filter.subDivision && filter.subDivision !== 'ALL') {
         const targetNorm = normalizeSubDiv(filter.subDivision);
-        const userNorm = normalizeSubDiv(userObj?.subDivision || userObj?.team || act.userTeam || '');
+        const userNorm = normalizeSubDiv(act.userSubDivision || userObj?.subDivision || userObj?.team || act.userTeam || '');
 
         if (targetNorm && userNorm) {
           if (targetNorm !== userNorm && !userNorm.includes(targetNorm) && !targetNorm.includes(userNorm)) {
@@ -483,7 +485,10 @@ export default function App() {
                 if (userId !== 'ALL') {
                   const targetUser = users.find(u => u.id === userId);
                   const userActs = activities.filter(
-                    a => a.userId === userId || (targetUser && a.userName.toLowerCase() === targetUser.name.toLowerCase())
+                    a =>
+                      a.userId === userId ||
+                      (targetUser?.email && a.userEmail?.toLowerCase() === targetUser.email.toLowerCase()) ||
+                      (targetUser && a.userName.toLowerCase() === targetUser.name.toLowerCase())
                   );
                   if (userActs.length > 0) {
                     // Sort descending by date & time so the latest activity is selected and focused on the map

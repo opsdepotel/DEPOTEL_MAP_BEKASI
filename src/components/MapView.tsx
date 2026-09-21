@@ -154,7 +154,11 @@ export const MapView: React.FC<MapViewProps> = ({
       if (isNaN(act.lat) || isNaN(act.lng)) return;
 
       const matchedUser = users.find(
-        u => u.id === act.userId || u.name.toLowerCase() === act.userName.toLowerCase() || (u.email && act.userId.includes(u.email))
+        u =>
+          (act.userEmail && u.email && u.email.toLowerCase() === act.userEmail.toLowerCase()) ||
+          u.id === act.userId ||
+          (u.email && act.userId === u.email) ||
+          u.name.toLowerCase() === act.userName.toLowerCase()
       );
 
       const groupKey = matchedUser ? matchedUser.id : act.userName.toLowerCase();
@@ -206,7 +210,11 @@ export const MapView: React.FC<MapViewProps> = ({
 
     activities.forEach(a => {
       const matchedUser = users.find(
-        u => u.id === a.userId || u.name.toLowerCase() === a.userName.toLowerCase() || (u.email && a.userId.includes(u.email))
+        u =>
+          (a.userEmail && u.email && u.email.toLowerCase() === a.userEmail.toLowerCase()) ||
+          u.id === a.userId ||
+          (u.email && a.userId === u.email) ||
+          u.name.toLowerCase() === a.userName.toLowerCase()
       );
       const groupKey = matchedUser ? matchedUser.id : a.userName.toLowerCase();
       if (!grouped.has(groupKey)) grouped.set(groupKey, []);
