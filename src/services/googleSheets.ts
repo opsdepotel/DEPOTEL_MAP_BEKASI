@@ -422,11 +422,6 @@ function parseUsersRows(rows: string[][]): TeamUser[] {
       subDivision = 'CM';
     }
 
-    // Ensure User "Junaedi" is assigned to MBP
-    if (name.toLowerCase().includes('junaedi')) {
-      subDivision = 'MBP';
-    }
-
     const cluster = colO || (clusterIdx !== -1 && row[clusterIdx] ? row[clusterIdx].trim() : '');
     const email = emailIdx !== -1 && row[emailIdx] ? row[emailIdx].trim() : (colA.includes('@') ? colA : (colB.includes('@') ? colB : colA));
     const phone = phoneIdx !== -1 ? row[phoneIdx] : undefined;
