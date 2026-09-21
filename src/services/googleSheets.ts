@@ -481,16 +481,6 @@ function parseActivityRows(rows: string[][], knownUsers: TeamUser[]): TeamActivi
     let actUserEmail = emailIdx !== -1 && row[emailIdx] ? row[emailIdx].trim() : '';
     const rawUserCell = userIdx !== -1 && row[userIdx] ? row[userIdx].trim() : '';
 
-    // Exclude activities for non-FMS personnel (such as Andreas A. Prasetyo)
-    const lowerRawUser = rawUserCell.toLowerCase();
-    const lowerActEmail = actUserEmail.toLowerCase();
-    if (
-      lowerRawUser.includes('andreas') ||
-      lowerActEmail.includes('andreas')
-    ) {
-      continue;
-    }
-
     if (!actUserEmail) {
       if (rawUserCell.includes('@')) {
         actUserEmail = rawUserCell;
