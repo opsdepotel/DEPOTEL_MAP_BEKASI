@@ -12,7 +12,7 @@ import L from 'leaflet';
 import { TeamUser, TeamActivity } from '../types';
 import { formatPhotoUrl, DEFAULT_ACTIVITY_PHOTO } from '../utils/photo';
 import { getUserInitials } from '../utils/user';
-import { getSiteDisplay, formatWaktuDisplay } from '../services/googleSheets';
+import { getSiteDisplay, formatWaktuDisplay, parseActivityTimestamp } from '../services/googleSheets';
 import {
   Clock,
   MapPin,
@@ -185,9 +185,9 @@ export const MapView: React.FC<MapViewProps> = ({
       }
 
       const sortedActs = [...group.acts].sort((a, b) => {
-        const timeA = `${a.date || ''} ${a.time || ''}`;
-        const timeB = `${b.date || ''} ${b.time || ''}`;
-        return timeA.localeCompare(timeB);
+        const tsA = parseActivityTimestamp(a.date, a.time);
+        const tsB = parseActivityTimestamp(b.date, b.time);
+        return tsA - tsB;
       });
 
       if (sortedActs.length >= 2) {
@@ -203,7 +203,7 @@ export const MapView: React.FC<MapViewProps> = ({
     return trails;
   }, [activities, selectedUserId, showTrail, users]);
 
-  // Sequence Map: Give each activity a chronological 1, 2, 3... index per user
+  // Sequence Map: Give each activity an exact chronological 1, 2, 3... index per user based on CreatedAt/time
   const userActivitySeq = useMemo(() => {
     const seqMap = new Map<string, number>();
     const grouped = new Map<string, TeamActivity[]>();
@@ -223,9 +223,9 @@ export const MapView: React.FC<MapViewProps> = ({
 
     grouped.forEach(acts => {
       const sorted = [...acts].sort((a, b) => {
-        const timeA = `${a.date || ''} ${a.time || ''}`;
-        const timeB = `${b.date || ''} ${b.time || ''}`;
-        return timeA.localeCompare(timeB);
+        const tsA = parseActivityTimestamp(a.date, a.time);
+        const tsB = parseActivityTimestamp(b.date, b.time);
+        return tsA - tsB;
       });
 
       sorted.forEach((act, idx) => {
@@ -235,6 +235,15 @@ export const MapView: React.FC<MapViewProps> = ({
 
     return seqMap;
   }, [activities, users]);
+
+  // Sort activities chronologically by CreatedAt/timestamp for plotting markers and visual progression
+  const sortedActivities = useMemo(() => {
+    return [...activities].sort((a, b) => {
+      const tsA = parseActivityTimestamp(a.date, a.time);
+      const tsB = parseActivityTimestamp(b.date, b.time);
+      return tsA - tsB;
+    });
+  }, [activities]);
 
   // Create Custom Avatar Pin Icon
   const createCustomIcon = (activity: TeamActivity, isSelected: boolean) => {
@@ -385,12 +394,13 @@ export const MapView: React.FC<MapViewProps> = ({
             </React.Fragment>
           ))}
 
-        {/* Activity Markers */}
-        {activities.map(activity => {
+        {/* Activity Markers (Sorted chronologically by CreatedAt/time) */}
+        {sortedActivities.map(activity => {
           if (isNaN(activity.lat) || isNaN(activity.lng)) return null;
 
           const isSelected = selectedActivity?.id === activity.id;
           const icon = createCustomIcon(activity, isSelected);
+          const seqNum = userActivitySeq.get(activity.id);
 
           return (
             <Marker
@@ -417,10 +427,21 @@ export const MapView: React.FC<MapViewProps> = ({
                 autoPanPadding={[40, 40]}
               >
                 <div className="p-1.5 max-w-[240px] font-sans text-slate-800">
-                  {/* Name Title */}
-                  <h3 className="font-bold text-sm text-slate-900 leading-snug mb-2 pr-6">
-                    {activity.userName}
-                  </h3>
+                  {/* Name Title & Order Badge */}
+                  <div className="flex items-center justify-between gap-1.5 mb-2 pr-6">
+                    <h3 className="font-bold text-sm text-slate-900 leading-snug truncate">
+                      {activity.userName}
+                    </h3>
+                    {seqNum !== undefined && (
+                      <span
+                        className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-black text-white shrink-0 shadow-2xs"
+                        style={{ backgroundColor: getUserColor(activity.userId, activity.userName) }}
+                        title="Nomor Urutan Kunjungan / Presensi"
+                      >
+                        #{seqNum}
+                      </span>
+                    )}
+                  </div>
 
                   {/* Photo Thumbnail Preview Card */}
                   <div className="mb-2">

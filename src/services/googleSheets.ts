@@ -119,6 +119,76 @@ export function formatWaktuDisplay(dateStr?: string, timeStr?: string): string {
   return `${trimmedDate} ${trimmedTime}`;
 }
 
+// Robust epoch millisecond timestamp parser for accurate chronological sorting of CreatedAt/Timestamp
+export function parseActivityTimestamp(dateStr?: string, timeStr?: string): number {
+  if (!dateStr && !timeStr) return 0;
+  const rawDate = (dateStr || '').trim();
+  const rawTime = (timeStr || '').trim();
+
+  // If timeStr itself contains full datetime e.g. "30/7/2026, 12.08.52" or "2026-10-01 06:07:40"
+  const fullCandidate =
+    rawTime.includes('/') || (rawTime.includes('-') && rawTime.includes(':'))
+      ? rawTime
+      : `${rawDate} ${rawTime}`.trim();
+
+  // Pattern 1: dd/mm/yyyy, hh:mm:ss or dd/mm/yyyy, hh.mm.ss
+  const dmyMatch = fullCandidate.match(
+    /(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})[,\s]+(\d{1,2})[:.](\d{1,2})(?:[:.](\d{1,2}))?/
+  );
+  if (dmyMatch) {
+    const day = parseInt(dmyMatch[1], 10);
+    const month = parseInt(dmyMatch[2], 10) - 1;
+    const year = parseInt(dmyMatch[3], 10);
+    const hour = parseInt(dmyMatch[4], 10);
+    const minute = parseInt(dmyMatch[5], 10);
+    const second = dmyMatch[6] ? parseInt(dmyMatch[6], 10) : 0;
+    const d = new Date(year, month, day, hour, minute, second);
+    if (!isNaN(d.getTime())) return d.getTime();
+  }
+
+  // Pattern 2: yyyy-mm-dd hh:mm:ss or yyyy/mm/dd hh.mm.ss
+  const ymdMatch = fullCandidate.match(
+    /(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})[,\s]+(\d{1,2})[:.](\d{1,2})(?:[:.](\d{1,2}))?/
+  );
+  if (ymdMatch) {
+    const year = parseInt(ymdMatch[1], 10);
+    const month = parseInt(ymdMatch[2], 10) - 1;
+    const day = parseInt(ymdMatch[3], 10);
+    const hour = parseInt(ymdMatch[4], 10);
+    const minute = parseInt(ymdMatch[5], 10);
+    const second = ymdMatch[6] ? parseInt(ymdMatch[6], 10) : 0;
+    const d = new Date(year, month, day, hour, minute, second);
+    if (!isNaN(d.getTime())) return d.getTime();
+  }
+
+  // Pattern 3: Separate time and date
+  let h = 0, m = 0, s = 0;
+  const timeOnlyMatch = rawTime.match(/(\d{1,2})[:.](\d{1,2})(?:[:.](\d{1,2}))?/);
+  if (timeOnlyMatch) {
+    h = parseInt(timeOnlyMatch[1], 10);
+    m = parseInt(timeOnlyMatch[2], 10);
+    s = timeOnlyMatch[3] ? parseInt(timeOnlyMatch[3], 10) : 0;
+  }
+
+  let year = 2026, month = 0, day = 1;
+  const dateYmd = rawDate.match(/(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+  if (dateYmd) {
+    year = parseInt(dateYmd[1], 10);
+    month = parseInt(dateYmd[2], 10) - 1;
+    day = parseInt(dateYmd[3], 10);
+  } else {
+    const dateDmy = rawDate.match(/(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})/);
+    if (dateDmy) {
+      day = parseInt(dateDmy[1], 10);
+      month = parseInt(dateDmy[2], 10) - 1;
+      year = parseInt(dateDmy[3], 10);
+    }
+  }
+
+  const d = new Date(year, month, day, h, m, s);
+  return isNaN(d.getTime()) ? 0 : d.getTime();
+}
+
 const SAMPLE_ACTIVITIES: TeamActivity[] = [
   {
     id: 'ACT101',
@@ -806,9 +876,9 @@ export async function fetchSpreadsheetData(
 
     // Sort chronologically (latest date & time first)
     combinedActivities.sort((a, b) => {
-      const timeA = `${a.date || ''} ${a.time || ''}`;
-      const timeB = `${b.date || ''} ${b.time || ''}`;
-      return timeB.localeCompare(timeA);
+      const tsA = parseActivityTimestamp(a.date, a.time);
+      const tsB = parseActivityTimestamp(b.date, b.time);
+      return tsB - tsA;
     });
 
     // Ensure no two activities share identical coordinates so every activity is individually visible as a marker

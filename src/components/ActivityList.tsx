@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { TeamActivity, TeamUser, ActivityFilter } from '../types';
-import { formatWaktuDisplay, getSiteDisplay } from '../services/googleSheets';
+import { formatWaktuDisplay, getSiteDisplay, parseActivityTimestamp } from '../services/googleSheets';
 import { getUserInitials } from '../utils/user';
 import {
   Search,
@@ -142,9 +142,9 @@ export const ActivityList: React.FC<ActivityListProps> = ({
 
     map.forEach((value, groupKey) => {
       const sortedActs = [...value.acts].sort((a, b) => {
-        const timeA = `${a.date || ''} ${a.time || ''}`;
-        const timeB = `${b.date || ''} ${b.time || ''}`;
-        return timeB.localeCompare(timeA);
+        const tsA = parseActivityTimestamp(a.date, a.time);
+        const tsB = parseActivityTimestamp(b.date, b.time);
+        return tsB - tsA;
       });
 
       groups.push({
