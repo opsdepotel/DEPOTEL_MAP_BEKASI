@@ -51,7 +51,14 @@ export default function App() {
   const [quotaExceeded, setQuotaExceeded] = useState(false);
 
   // Data States
-  const [sheetId, setSheetId] = useState<string>(DEFAULT_SHEET_ID);
+  const [sheetId, setSheetId] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search);
+      const s = p.get('sheetId') || p.get('sheet');
+      if (s && s.trim()) return s.trim();
+    }
+    return DEFAULT_SHEET_ID;
+  });
   const [users, setUsers] = useState<TeamUser[]>([]);
   const [activities, setActivities] = useState<TeamActivity[]>([]);
   const [fetchState, setFetchState] = useState<SheetFetchState>({

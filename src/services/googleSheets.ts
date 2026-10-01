@@ -2,6 +2,7 @@ import { TeamUser, TeamActivity } from '../types';
 import { formatPhotoUrl } from '../utils/photo';
 
 export const DEFAULT_SHEET_ID = '1H39tuO0E_WLJUtl6ebzH4w3kd76XZa9rMLadwDuxwQs';
+export const NEW_ACTIVITY_SHEET_ID = '1rlThCCTsM3nDl4W3Jz1Xbnx1zQmigCgBP838qcndABc';
 
 // Predefined vibrant colors for team users
 const TEAM_COLORS = [
@@ -398,16 +399,14 @@ function parseUsersRows(rows: string[][]): TeamUser[] {
     const name = colC || (nameIdx !== -1 && row[nameIdx] ? row[nameIdx].trim() : (colA || `User ${i}`));
     const id = idIdx !== -1 && row[idIdx] ? row[idIdx].trim() : (colA || `USR${String(i).padStart(3, '0')}`);
     const role = roleIdx !== -1 && row[roleIdx] ? row[roleIdx].trim() : 'Anggota Tim';
-    const divisionCol = colG || (teamIdx !== -1 && row[teamIdx] ? row[teamIdx].trim() : '');
-
-    // Strict filter: ONLY include users whose Division column explicitly contains "FMS".
-    // Blank/empty entries or non-FMS divisions (e.g. NOC, IT, HR, or blank) are excluded.
-    if (!divisionCol || !divisionCol.toUpperCase().includes('FMS')) {
+    // If user name or id is empty/header, skip
+    if (!name || name.toLowerCase() === 'nama' || name.toLowerCase() === 'name') {
       continue;
     }
 
-    const team = divisionCol;
-    const division = divisionCol;
+    const divisionCol = colG || (teamIdx !== -1 && row[teamIdx] ? row[teamIdx].trim() : '');
+    const team = divisionCol || 'FMS';
+    const division = divisionCol || 'FMS';
     let subDivision = (subDivIdx !== -1 && row[subDivIdx] ? row[subDivIdx].trim() : colH) || '';
     if (['-', '—', '–', 'none', 'null'].includes(subDivision.toLowerCase()) || subDivision.replace(/[-_.\s]/g, '') === '') {
       subDivision = '';
@@ -454,19 +453,19 @@ function parseActivityRows(rows: string[][], knownUsers: TeamUser[]): TeamActivi
   const findIndex = (keys: string[]) =>
     headers.findIndex(h => keys.some(k => h.includes(k)));
 
-  const idIdx = findIndex(['id', 'idactivity', 'activityid', 'no']);
+  const idIdx = findIndex(['id', 'idactivity', 'activityid', 'no', 'transaction_id', 'transactionid']);
   const emailIdx = findIndex(['email', 'useremail', 'emailuser', 'pelaksanaemail', 'mail', 'surel']);
-  const userIdx = findIndex(['userid', 'iduser', 'user', 'nama', 'petugas', 'pelaksana']);
+  const userIdx = findIndex(['userid', 'iduser', 'user', 'nama', 'petugas', 'pelaksana', 'nik']);
   const dateIdx = findIndex(['tanggal', 'date', 'tgl', 'timestamp']);
-  const timeIdx = findIndex(['time', 'jam', 'waktu']);
+  const timeIdx = findIndex(['time', 'jam', 'waktu', 'createdat', 'created_at', 'timestamp', 'checkin']);
   const siteIdIdx = findIndex(['siteid', 'site_id', 'site id', 'kodesite', 'kode site']);
   const siteNameIdx = findIndex(['sitename', 'site_name', 'site name', 'namasite', 'nama site']);
-  const titleIdx = findIndex(['judul', 'title', 'kegiatan', 'aktivitas', 'activity', 'namaaktivitas']);
-  const descIdx = findIndex(['deskripsi', 'description', 'keterangan', 'notes', 'catatan', 'detail']);
-  const locIdx = findIndex(['lokasi', 'location', 'tempat', 'alamat', 'namalokasi']);
+  const titleIdx = headers.findIndex(h => ['judul', 'title', 'kegiatan', 'aktivitas', 'namaaktivitas', 'plan'].some(k => h === k || (h.includes(k) && !h.includes('id'))));
+  const descIdx = findIndex(['deskripsi', 'description', 'keterangan', 'notes', 'catatan', 'detail', 'activity_1', 'plan_1']);
+  const locIdx = findIndex(['lokasi', 'location', 'tempat', 'alamat', 'namalokasi', 'lokasi_checkin_1']);
   const latIdx = findIndex(['latitude', 'lat']);
   const lngIdx = findIndex(['longitude', 'lng', 'long']);
-  const coordIdx = findIndex(['koordinat', 'latlng', 'coordinate', 'posisi']);
+  const coordIdx = findIndex(['koordinat', 'latlng', 'coordinate', 'posisi', 'coordinatesactual', 'coordinatesdb']);
   const catIdx = findIndex(['kategori', 'category', 'jenis', 'tipe']);
   const statusIdx = findIndex(['status', 'keadaan', 'progres', 'progress']);
   const photoIdx = findIndex(['foto', 'photo', 'bukti', 'gambar', 'image']);
@@ -514,17 +513,12 @@ function parseActivityRows(rows: string[][], knownUsers: TeamUser[]): TeamActivi
       });
     }
 
-    // Exclude activity if the user is not part of the FMS team (knownUsers)
-    if (!matchedUser) {
-      continue;
-    }
-
     // Joined fields from Users sheet (User Name, Divisi, Sub Divisi, Cluster)
-    const userId = matchedUser ? matchedUser.id : (actUserEmail ? `USR_${actUserEmail.replace(/[^a-zA-Z0-9]/g, '_')}` : 'USR001');
-    const userName = matchedUser ? matchedUser.name : (actUserEmail ? actUserEmail.split('@')[0] : 'Anggota Tim'); // Column C of Users
-    const userDivision = matchedUser ? (matchedUser.division || matchedUser.team) : ''; // Column G of Users
-    const userSubDivision = matchedUser ? matchedUser.subDivision : ''; // Column H of Users
-    const userCluster = matchedUser ? matchedUser.cluster : ''; // Column O of Users
+    const userId = matchedUser ? matchedUser.id : (actUserEmail ? `USR_${actUserEmail.replace(/[^a-zA-Z0-9]/g, '_')}` : (rawUserCell || `USR${100 + i}`));
+    const userName = matchedUser ? matchedUser.name : (rawUserCell || (actUserEmail ? actUserEmail.split('@')[0] : `Petugas ${i}`));
+    const userDivision = matchedUser ? (matchedUser.division || matchedUser.team) : '';
+    const userSubDivision = matchedUser ? matchedUser.subDivision : '';
+    const userCluster = matchedUser ? matchedUser.cluster : '';
     const userTeam = matchedUser ? matchedUser.team : userDivision;
     const userRole = matchedUser ? matchedUser.role : 'Anggota Tim';
 
@@ -537,9 +531,29 @@ function parseActivityRows(rows: string[][], knownUsers: TeamUser[]): TeamActivi
     const siteId = siteIdIdx !== -1 && row[siteIdIdx] ? row[siteIdIdx] : (row[4] && row.length > 4 ? row[4] : '');
     const siteName = siteNameIdx !== -1 && row[siteNameIdx] ? row[siteNameIdx] : (row[5] && row.length > 5 ? row[5] : '');
 
-    const title = titleIdx !== -1 && row[titleIdx] ? row[titleIdx] : `Aktivitas ${i}`;
-    const description = descIdx !== -1 && row[descIdx] ? row[descIdx] : '-';
-    const locationName = locIdx !== -1 && row[locIdx] ? row[locIdx] : 'Lokasi Lapangan';
+    let title = titleIdx !== -1 && row[titleIdx] ? row[titleIdx].trim() : '';
+    const description = descIdx !== -1 && row[descIdx] ? row[descIdx].trim() : '-';
+    let locationName = locIdx !== -1 && row[locIdx] ? row[locIdx].trim() : 'Lokasi Lapangan';
+
+    if (locationName.includes('google.com/maps')) {
+      locationName = 'Titik Koordinat Presensi';
+    }
+
+    if (!title || title.toUpperCase() === 'CHECKIN' || title.toLowerCase() === 'absen') {
+      if (siteId && siteId.toUpperCase() === 'CHECKIN') {
+        title = description && description !== '-' ? `Check-in: ${description}` : 'Check-in Absensi';
+      } else if (siteId && siteName) {
+        title = `${siteId} - ${siteName}`;
+      } else if (siteName) {
+        title = siteName;
+      } else if (siteId) {
+        title = `Site ${siteId}`;
+      } else if (description && description !== '-') {
+        title = description;
+      } else {
+        title = `Aktivitas ${i}`;
+      }
+    }
 
     // Parse latitude and longitude
     let lat: number | null = null;
@@ -591,7 +605,11 @@ function parseActivityRows(rows: string[][], knownUsers: TeamUser[]): TeamActivi
       lng = baseLng + Math.cos(angle) * radius;
     }
 
-    const category = catIdx !== -1 && row[catIdx] ? row[catIdx] : 'Aktivitas';
+    let category = catIdx !== -1 && row[catIdx] ? row[catIdx] : 'Aktivitas';
+    if (siteId.toUpperCase() === 'CHECKIN' || title.toLowerCase().includes('checkin') || title.toLowerCase().includes('absen')) {
+      category = 'Check-in';
+    }
+
     const status = statusIdx !== -1 && row[statusIdx] ? row[statusIdx] : 'Selesai';
     const rawPhoto = photoIdx !== -1 && row[photoIdx] ? row[photoIdx] : undefined;
     const photoUrl = rawPhoto ? formatPhotoUrl(rawPhoto) : undefined;
@@ -646,26 +664,50 @@ export async function fetchSpreadsheetData(
 ): Promise<{ users: TeamUser[]; activities: TeamActivity[]; isDemoData: boolean; error?: string }> {
   try {
     let usersRows: string[][] = [];
-    let activityRows: string[][] = [];
+    let primaryActivityRows: string[][] = [];
+    let newActivityRows: string[][] = [];
     let fetchedViaApi = false;
+
+    const userSourceSheet = sheetId === NEW_ACTIVITY_SHEET_ID ? DEFAULT_SHEET_ID : sheetId;
 
     // Method 1: Google Sheets API v4 with Bearer OAuth Token
     if (accessToken) {
       try {
-        const usersRes = await fetch(
-          `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/Users!A1:O1000`,
-          { headers: { Authorization: `Bearer ${accessToken}` } }
-        );
-        const activityRes = await fetch(
-          `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/Activity!A1:Z1000`,
-          { headers: { Authorization: `Bearer ${accessToken}` } }
-        );
+        const [usersRes, activityRes] = await Promise.all([
+          fetch(
+            `https://sheets.googleapis.com/v4/spreadsheets/${userSourceSheet}/values/Users!A1:O1000`,
+            { headers: { Authorization: `Bearer ${accessToken}` } }
+          ),
+          fetch(
+            `https://sheets.googleapis.com/v4/spreadsheets/${DEFAULT_SHEET_ID}/values/Activity!A1:Z1000`,
+            { headers: { Authorization: `Bearer ${accessToken}` } }
+          ),
+        ]);
 
-        if (usersRes.ok && activityRes.ok) {
+        if (usersRes.ok) {
           const usersData = await usersRes.json();
-          const activityData = await activityRes.json();
           usersRows = usersData.values || [];
-          activityRows = activityData.values || [];
+        }
+        if (activityRes.ok) {
+          const activityData = await activityRes.json();
+          primaryActivityRows = activityData.values || [];
+        }
+
+        // Fetch from new sheet
+        try {
+          const newActRes = await fetch(
+            `https://sheets.googleapis.com/v4/spreadsheets/${NEW_ACTIVITY_SHEET_ID}/values/Sheet3!A1:Z1000`,
+            { headers: { Authorization: `Bearer ${accessToken}` } }
+          );
+          if (newActRes.ok) {
+            const newData = await newActRes.json();
+            newActivityRows = newData.values || [];
+          }
+        } catch (e) {
+          console.warn('Gagal memuat Sheet3 via API:', e);
+        }
+
+        if (usersRows.length > 0 || primaryActivityRows.length > 0 || newActivityRows.length > 0) {
           fetchedViaApi = true;
         }
       } catch (err) {
@@ -676,19 +718,66 @@ export async function fetchSpreadsheetData(
     // Method 2: Google Sheets Public GViz CSV Export
     if (!fetchedViaApi) {
       try {
-        const [usersCsvRes, activityCsvRes] = await Promise.all([
-          fetch(`https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=Users`),
-          fetch(`https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=Activity`),
+        const [usersCsvRes, primaryActCsvRes, newActCsvRes] = await Promise.all([
+          fetch(`https://docs.google.com/spreadsheets/d/${userSourceSheet}/gviz/tq?tqx=out:csv&sheet=Users`),
+          fetch(`https://docs.google.com/spreadsheets/d/${DEFAULT_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Activity`),
+          fetch(`https://docs.google.com/spreadsheets/d/${NEW_ACTIVITY_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Sheet3`),
         ]);
 
-        if (usersCsvRes.ok && activityCsvRes.ok) {
+        if (usersCsvRes.ok) {
           const usersCsvText = await usersCsvRes.text();
-          const activityCsvText = await activityCsvRes.text();
-
-          // Ensure it's valid CSV and not HTML login page
-          if (!usersCsvText.includes('<!DOCTYPE html>') && !activityCsvText.includes('<!DOCTYPE html>')) {
+          if (!usersCsvText.includes('<!DOCTYPE html>')) {
             usersRows = parseCSV(usersCsvText);
-            activityRows = parseCSV(activityCsvText);
+          }
+        }
+
+        if (primaryActCsvRes.ok) {
+          const primaryCsvText = await primaryActCsvRes.text();
+          if (!primaryCsvText.includes('<!DOCTYPE html>')) {
+            primaryActivityRows = parseCSV(primaryCsvText);
+          }
+        }
+
+        if (newActCsvRes.ok) {
+          const newCsvText = await newActCsvRes.text();
+          if (!newCsvText.includes('<!DOCTYPE html>')) {
+            newActivityRows = parseCSV(newCsvText);
+          }
+        }
+
+        // Fallback for new sheet: if Sheet3 returned empty or invalid, try gid 724699215
+        if (newActivityRows.length <= 1) {
+          try {
+            const gidRes = await fetch(`https://docs.google.com/spreadsheets/d/${NEW_ACTIVITY_SHEET_ID}/gviz/tq?tqx=out:csv&gid=724699215`);
+            if (gidRes.ok) {
+              const gidTxt = await gidRes.text();
+              if (!gidTxt.includes('<!DOCTYPE html>')) {
+                const parsed = parseCSV(gidTxt);
+                if (parsed.length > 1) {
+                  newActivityRows = parsed;
+                }
+              }
+            }
+          } catch (e) {
+            console.warn('Fallback gid fetch error:', e);
+          }
+        }
+
+        // Custom targetSheetId handling if specified and different from defaults
+        if (sheetId !== DEFAULT_SHEET_ID && sheetId !== NEW_ACTIVITY_SHEET_ID) {
+          try {
+            const customActRes = await fetch(`https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=Activity`);
+            if (customActRes.ok) {
+              const customTxt = await customActRes.text();
+              if (!customTxt.includes('<!DOCTYPE html>')) {
+                const customRows = parseCSV(customTxt);
+                if (customRows.length > 1) {
+                  primaryActivityRows = [...primaryActivityRows, ...customRows.slice(1)];
+                }
+              }
+            }
+          } catch (e) {
+            console.warn('Gagal memuat custom sheet:', e);
           }
         }
       } catch (err) {
@@ -697,12 +786,51 @@ export async function fetchSpreadsheetData(
     }
 
     const parsedUsers = parseUsersRows(usersRows);
-    const parsedActivities = parseActivityRows(activityRows, parsedUsers.length > 0 ? parsedUsers : SAMPLE_USERS);
+    const usersToUse = parsedUsers.length > 0 ? parsedUsers : SAMPLE_USERS;
 
-    if (parsedUsers.length > 0 || parsedActivities.length > 0) {
+    const parsedPrimaryActs = parseActivityRows(primaryActivityRows, usersToUse);
+    const parsedNewActs = parseActivityRows(newActivityRows, usersToUse);
+
+    // Merge activities into unique map by ID
+    const activityMap = new Map<string, TeamActivity>();
+    for (const act of parsedNewActs) {
+      activityMap.set(act.id, act);
+    }
+    for (const act of parsedPrimaryActs) {
+      if (!activityMap.has(act.id)) {
+        activityMap.set(act.id, act);
+      }
+    }
+
+    const combinedActivities = Array.from(activityMap.values());
+
+    // Sort chronologically (latest date & time first)
+    combinedActivities.sort((a, b) => {
+      const timeA = `${a.date || ''} ${a.time || ''}`;
+      const timeB = `${b.date || ''} ${b.time || ''}`;
+      return timeB.localeCompare(timeA);
+    });
+
+    // Ensure no two activities share identical coordinates so every activity is individually visible as a marker
+    const coordMap: { [key: string]: number } = {};
+    for (const act of combinedActivities) {
+      const key = `${act.lat.toFixed(5)},${act.lng.toFixed(5)}`;
+      if (coordMap[key] !== undefined) {
+        coordMap[key] += 1;
+        const count = coordMap[key];
+        const angle = count * 1.25;
+        const offset = 0.0003 * count;
+        act.lat += Math.sin(angle) * offset;
+        act.lng += Math.cos(angle) * offset;
+      } else {
+        coordMap[key] = 0;
+      }
+    }
+
+    if (parsedUsers.length > 0 || combinedActivities.length > 0) {
       return {
-        users: parsedUsers.length > 0 ? parsedUsers : SAMPLE_USERS,
-        activities: parsedActivities.length > 0 ? parsedActivities : SAMPLE_ACTIVITIES,
+        users: usersToUse,
+        activities: combinedActivities.length > 0 ? combinedActivities : SAMPLE_ACTIVITIES,
         isDemoData: false,
       };
     }
