@@ -17,6 +17,7 @@ import {
   FileCheck,
   Clock,
   X,
+  UserCheck,
 } from 'lucide-react';
 
 interface ActivityListProps {
@@ -31,6 +32,7 @@ interface ActivityListProps {
   onSelectUser: (userId: string) => void;
   showTrail: boolean;
   onToggleTrail: () => void;
+  onOpenCheckinModal?: () => void;
 }
 
 interface ActiveUserGroup {
@@ -55,9 +57,22 @@ export const ActivityList: React.FC<ActivityListProps> = ({
   onSelectUser,
   showTrail,
   onToggleTrail,
+  onOpenCheckinModal,
 }) => {
   const [expandedUsers, setExpandedUsers] = useState<Record<string, boolean>>({});
   const itemRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+
+  // Compute number of check-in activities matching current filter
+  const checkinCount = useMemo(() => {
+    return activities.filter(act => {
+      const isCheckin =
+        (act.status && act.status.toUpperCase() === 'CHECKIN') ||
+        (act.category && act.category.toUpperCase().includes('CHECKIN')) ||
+        (act.siteId && act.siteId.toUpperCase() === 'CHECKIN') ||
+        (act.title && act.title.toUpperCase().includes('CHECKIN'));
+      return isCheckin;
+    }).length;
+  }, [activities]);
 
   // Auto scroll item into view when selectedActivity changes
   useEffect(() => {
@@ -276,8 +291,35 @@ export const ActivityList: React.FC<ActivityListProps> = ({
               ))}
           </select>
         </div>
-
       </div>
+
+      {/* Check-in Quick Form Access Card */}
+      {onOpenCheckinModal && (
+        <button
+          onClick={onOpenCheckinModal}
+          className="w-full bg-gradient-to-r from-emerald-600 via-emerald-700 to-teal-800 hover:from-emerald-500 hover:to-teal-700 text-white p-2.5 rounded-xl shadow-xs transition flex items-center justify-between gap-3 text-left group cursor-pointer border border-emerald-500/40"
+        >
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0 shadow-inner">
+              <UserCheck className="w-4 h-4 text-white" />
+            </div>
+            <div>
+              <div className="font-bold text-xs leading-snug flex items-center gap-1.5">
+                <span>Form Daftar User CHECK-IN</span>
+                <span className="bg-emerald-950/60 text-emerald-300 text-[10px] font-black px-1.5 py-0.2 rounded-full border border-emerald-400/40">
+                  {checkinCount} User
+                </span>
+              </div>
+              <p className="text-[10px] text-emerald-100/90 leading-tight">
+                Tabel waktu (hh:mm:ss), koordinat & alamat
+              </p>
+            </div>
+          </div>
+          <span className="text-[11px] font-bold bg-white text-emerald-800 px-2.5 py-1 rounded-lg shadow-2xs group-hover:bg-emerald-50 shrink-0 transition">
+            Buka Form →
+          </span>
+        </button>
+      )}
 
       {/* Active Users Summary Banner */}
       <div className="flex items-center justify-between gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">

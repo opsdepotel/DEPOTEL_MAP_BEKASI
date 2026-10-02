@@ -153,15 +153,18 @@ export const MapView: React.FC<MapViewProps> = ({
     activities.forEach(act => {
       if (isNaN(act.lat) || isNaN(act.lng)) return;
 
-      const matchedUser = users.find(
-        u =>
-          (act.userEmail && u.email && u.email.toLowerCase() === act.userEmail.toLowerCase()) ||
-          u.id === act.userId ||
-          (u.email && act.userId === u.email) ||
-          u.name.toLowerCase() === act.userName.toLowerCase()
-      );
+      const actEmail = (act.userEmail || '').trim().toLowerCase();
+      const actUserId = (act.userId || '').trim().toLowerCase();
+      const actUserName = (act.userName || '').trim().toLowerCase();
 
-      const groupKey = matchedUser ? matchedUser.id : act.userName.toLowerCase();
+      let matchedUser = users.find(u => {
+        if (actEmail && u.email && u.email.trim().toLowerCase() === actEmail) return true;
+        if (actUserId && (u.id.trim().toLowerCase() === actUserId || (u.email && u.email.trim().toLowerCase() === actUserId))) return true;
+        if (actUserName && u.name.trim().toLowerCase() === actUserName) return true;
+        return false;
+      });
+
+      const groupKey = matchedUser ? matchedUser.id : (actUserId || actEmail || actUserName);
 
       if (!userGroups.has(groupKey)) {
         userGroups.set(groupKey, {
@@ -209,14 +212,18 @@ export const MapView: React.FC<MapViewProps> = ({
     const grouped = new Map<string, TeamActivity[]>();
 
     activities.forEach(a => {
-      const matchedUser = users.find(
-        u =>
-          (a.userEmail && u.email && u.email.toLowerCase() === a.userEmail.toLowerCase()) ||
-          u.id === a.userId ||
-          (u.email && a.userId === u.email) ||
-          u.name.toLowerCase() === a.userName.toLowerCase()
-      );
-      const groupKey = matchedUser ? matchedUser.id : a.userName.toLowerCase();
+      const actEmail = (a.userEmail || '').trim().toLowerCase();
+      const actUserId = (a.userId || '').trim().toLowerCase();
+      const actUserName = (a.userName || '').trim().toLowerCase();
+
+      let matchedUser = users.find(u => {
+        if (actEmail && u.email && u.email.trim().toLowerCase() === actEmail) return true;
+        if (actUserId && (u.id.trim().toLowerCase() === actUserId || (u.email && u.email.trim().toLowerCase() === actUserId))) return true;
+        if (actUserName && u.name.trim().toLowerCase() === actUserName) return true;
+        return false;
+      });
+
+      const groupKey = matchedUser ? matchedUser.id : (actUserId || actEmail || actUserName);
       if (!grouped.has(groupKey)) grouped.set(groupKey, []);
       grouped.get(groupKey)!.push(a);
     });
@@ -265,8 +272,9 @@ export const MapView: React.FC<MapViewProps> = ({
           border-radius: 9999px;
           font-size: 10px;
           font-weight: 800;
-          width: 18px;
+          min-width: 18px;
           height: 18px;
+          padding: 0 3px;
           display: flex;
           align-items: center;
           justify-content: center;

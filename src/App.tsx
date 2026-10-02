@@ -8,7 +8,8 @@ import {
 } from './services/firebaseAuth';
 import {
   fetchSpreadsheetData,
-  DEFAULT_SHEET_ID
+  DEFAULT_SHEET_ID,
+  parseActivityTimestamp
 } from './services/googleSheets';
 import { TeamUser, TeamActivity, SheetFetchState, ActivityFilter } from './types';
 
@@ -17,6 +18,7 @@ import { MapView } from './components/MapView';
 import { ActivityList } from './components/ActivityList';
 import { AddActivityModal } from './components/AddActivityModal';
 import { ActivityDetailModal } from './components/ActivityDetailModal';
+import { CheckinUserListModal } from './components/CheckinUserListModal';
 
 import { MapPin, AlertCircle, RefreshCw, FileSpreadsheet, PlusCircle } from 'lucide-react';
 
@@ -112,6 +114,7 @@ export default function App() {
   // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [photoModalActivity, setPhotoModalActivity] = useState<TeamActivity | null>(null);
+  const [isCheckinModalOpen, setIsCheckinModalOpen] = useState(false);
 
   // Quota Event Listener
   useEffect(() => {
@@ -384,6 +387,18 @@ export default function App() {
     });
   }, [baseFilteredActivities, selectedUserId, users, findUserForActivity]);
 
+  // Check-in count for current filtered activities
+  const checkinCount = useMemo(() => {
+    return baseFilteredActivities.filter(act => {
+      const isCheckin =
+        (act.status && act.status.toUpperCase() === 'CHECKIN') ||
+        (act.category && act.category.toUpperCase().includes('CHECKIN')) ||
+        (act.siteId && act.siteId.toUpperCase() === 'CHECKIN') ||
+        (act.title && act.title.toUpperCase().includes('CHECKIN'));
+      return isCheckin;
+    }).length;
+  }, [baseFilteredActivities]);
+
   // Add new activity
   const handleAddActivity = (newActivity: TeamActivity) => {
     setActivities(prev => [newActivity, ...prev]);
@@ -422,6 +437,8 @@ export default function App() {
         onRefresh={() => loadData(sheetId, token)}
         onOpenAddModal={() => setIsAddModalOpen(true)}
         activeCluster={filter.cluster}
+        checkinCount={checkinCount}
+        onOpenCheckinModal={() => setIsCheckinModalOpen(true)}
       />
 
       {/* Main Container */}
@@ -500,9 +517,9 @@ export default function App() {
                   if (userActs.length > 0) {
                     // Sort descending by date & time so the latest activity is selected and focused on the map
                     const sorted = [...userActs].sort((a, b) => {
-                      const timeA = `${a.date || ''} ${a.time || ''}`;
-                      const timeB = `${b.date || ''} ${b.time || ''}`;
-                      return timeB.localeCompare(timeA);
+                      const tsA = parseActivityTimestamp(a.date, a.time);
+                      const tsB = parseActivityTimestamp(b.date, b.time);
+                      return tsB - tsA;
                     });
                     setSelectedActivity(sorted[0]);
                   } else {
@@ -514,6 +531,7 @@ export default function App() {
               }}
               showTrail={showTrail}
               onToggleTrail={() => setShowTrail(!showTrail)}
+              onOpenCheckinModal={() => setIsCheckinModalOpen(true)}
             />
 
           </div>
@@ -545,6 +563,19 @@ export default function App() {
         activity={photoModalActivity}
         isOpen={!!photoModalActivity}
         onClose={() => setPhotoModalActivity(null)}
+      />
+
+      {/* Form Daftar User CHECK-IN Sesuai Filter */}
+      <CheckinUserListModal
+        isOpen={isCheckinModalOpen}
+        onClose={() => setIsCheckinModalOpen(false)}
+        activities={baseFilteredActivities}
+        users={filteredUsers}
+        filter={filter}
+        onSelectActivity={act => {
+          setSelectedActivity(act);
+          setSelectedUserId(act.userId);
+        }}
       />
 
     </div>

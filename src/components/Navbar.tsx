@@ -4,7 +4,8 @@ import {
   MapPin,
   RefreshCw,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  UserCheck
 } from 'lucide-react';
 import { SheetFetchState } from '../types';
 import { DepotelLogo } from './DepotelLogo';
@@ -19,6 +20,8 @@ interface NavbarProps {
   onRefresh: () => void;
   onOpenAddModal: () => void;
   activeCluster?: string;
+  checkinCount?: number;
+  onOpenCheckinModal?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -31,6 +34,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onRefresh,
   onOpenAddModal,
   activeCluster,
+  checkinCount = 0,
+  onOpenCheckinModal,
 }) => {
   return (
     <header className="bg-gradient-to-r from-blue-950 via-slate-950 to-black text-white border-b border-slate-800/80 sticky top-0 z-40 shadow-lg">
@@ -88,6 +93,21 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </span>
               )}
             </div>
+
+            {/* Form / Daftar User Check-in Button */}
+            {onOpenCheckinModal && (
+              <button
+                onClick={onOpenCheckinModal}
+                title="Buka Form Daftar User berstatus CHECKIN"
+                className="px-3 py-1.5 rounded-lg bg-emerald-600/90 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 border border-emerald-500/50 shadow-sm transition hover:shadow-emerald-500/20"
+              >
+                <UserCheck className="w-3.5 h-3.5 text-emerald-100" />
+                <span className="hidden sm:inline">Daftar Check-in</span>
+                <span className="inline-flex items-center px-1.5 py-0.2 rounded-full text-[10px] font-black bg-emerald-950/80 text-emerald-300 border border-emerald-400/40">
+                  {checkinCount}
+                </span>
+              </button>
+            )}
 
             {/* Refresh Button */}
             <button

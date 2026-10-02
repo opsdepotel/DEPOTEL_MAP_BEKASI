@@ -119,6 +119,42 @@ export function formatWaktuDisplay(dateStr?: string, timeStr?: string): string {
   return `${trimmedDate} ${trimmedTime}`;
 }
 
+// Formats time strictly to "hh:mm:ss" as requested by user
+export function formatHmsTime(timeStr?: string, dateStr?: string): string {
+  if (!timeStr) return '--:--:--';
+  const trimmed = timeStr.trim();
+
+  // Pattern A: Time part inside a datetime string like "1/10/2026, 01.55.51" or "30/7/2026, 12.08.52" or "2026-10-01 06:07:40"
+  const dtMatch = trimmed.match(/[,\s]+(\d{1,2})[:.](\d{1,2})(?:[:.](\d{1,2}))?/);
+  if (dtMatch) {
+    const hh = dtMatch[1].padStart(2, '0');
+    const mm = dtMatch[2].padStart(2, '0');
+    const ss = dtMatch[3] ? dtMatch[3].padStart(2, '0') : '00';
+    return `${hh}:${mm}:${ss}`;
+  }
+
+  // Pattern B: Time string starting with hh:mm[:ss] or hh.mm[.ss]
+  const timeOnly = trimmed.match(/^(\d{1,2})[:.](\d{1,2})(?:[:.](\d{1,2}))?/);
+  if (timeOnly) {
+    const hh = timeOnly[1].padStart(2, '0');
+    const mm = timeOnly[2].padStart(2, '0');
+    const ss = timeOnly[3] ? timeOnly[3].padStart(2, '0') : '00';
+    return `${hh}:${mm}:${ss}`;
+  }
+
+  // Fallback: parse epoch timestamp
+  const ts = parseActivityTimestamp(dateStr, timeStr);
+  if (ts > 0) {
+    const d = new Date(ts);
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    const ss = String(d.getSeconds()).padStart(2, '0');
+    return `${hh}:${mm}:${ss}`;
+  }
+
+  return trimmed;
+}
+
 // Robust epoch millisecond timestamp parser for accurate chronological sorting of CreatedAt/Timestamp
 export function parseActivityTimestamp(dateStr?: string, timeStr?: string): number {
   if (!dateStr && !timeStr) return 0;
@@ -675,12 +711,32 @@ function parseActivityRows(rows: string[][], knownUsers: TeamUser[]): TeamActivi
       lng = baseLng + Math.cos(angle) * radius;
     }
 
+    const isCheckin =
+      siteId.toUpperCase() === 'CHECKIN' ||
+      title.toLowerCase().includes('checkin') ||
+      title.toLowerCase().includes('absen') ||
+      (statusIdx !== -1 && row[statusIdx] && row[statusIdx].toUpperCase().includes('CHECKIN'));
+
+    const isCheckout =
+      siteId.toUpperCase() === 'CHECKOUT' ||
+      title.toLowerCase().includes('checkout') ||
+      (statusIdx !== -1 && row[statusIdx] && row[statusIdx].toUpperCase().includes('CHECKOUT'));
+
     let category = catIdx !== -1 && row[catIdx] ? row[catIdx] : 'Aktivitas';
-    if (siteId.toUpperCase() === 'CHECKIN' || title.toLowerCase().includes('checkin') || title.toLowerCase().includes('absen')) {
+    if (isCheckin) {
       category = 'Check-in';
+    } else if (isCheckout) {
+      category = 'Check-out';
     }
 
-    const status = statusIdx !== -1 && row[statusIdx] ? row[statusIdx] : 'Selesai';
+    let status = 'Selesai';
+    if (isCheckin) {
+      status = 'CHECKIN';
+    } else if (isCheckout) {
+      status = 'CHECKOUT';
+    } else if (statusIdx !== -1 && row[statusIdx] && row[statusIdx].trim()) {
+      status = row[statusIdx].trim();
+    }
     const rawPhoto = photoIdx !== -1 && row[photoIdx] ? row[photoIdx] : undefined;
     const photoUrl = rawPhoto ? formatPhotoUrl(rawPhoto) : undefined;
 
