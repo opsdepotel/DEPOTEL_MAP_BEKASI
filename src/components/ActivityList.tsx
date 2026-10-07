@@ -298,37 +298,16 @@ export const ActivityList: React.FC<ActivityListProps> = ({
         </div>
       </div>
 
-      {/* Tower Space Dedicated Export Banner Card */}
-      {isTowerSpace && (
-        <div className="bg-gradient-to-r from-emerald-900 via-slate-900 to-emerald-950 text-white p-3 rounded-xl shadow-xs border border-emerald-500/40 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center shrink-0 shadow-inner text-emerald-400 font-black text-xs">
-              TS
-            </div>
-            <div>
-              <div className="font-bold text-xs text-white leading-snug flex items-center gap-1.5">
-                <span>Filter: Activity=TowerSpace</span>
-                <span className="bg-emerald-500 text-slate-950 text-[10px] font-black px-1.5 py-0.2 rounded-full">
-                  {activities.length} Aktivitas
-                </span>
-              </div>
-              <p className="text-[10px] text-emerald-200/80 leading-tight">
-                Mulai 1 Okt 2026 • Non-CM
-              </p>
-            </div>
-          </div>
-
-          {onExportTowerSpaceCsv && (
-            <button
-              onClick={onExportTowerSpaceCsv}
-              className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs flex items-center gap-1.5 shadow-sm transition shrink-0 cursor-pointer"
-              title="Unduh CSV [No, NamaUser, Tanggal, SiteID-SiteName, Keterangan]"
-            >
-              <Download className="w-3.5 h-3.5 text-slate-950" />
-              <span>Export CSV</span>
-            </button>
-          )}
-        </div>
+      {/* Tombol Export CSV khusus TowerSpace (Ditempatkan diatas Badge Pengguna Aktif) */}
+      {isTowerSpace && onExportTowerSpaceCsv && (
+        <button
+          onClick={onExportTowerSpaceCsv}
+          className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-xl shadow-xs transition flex items-center justify-center gap-2 text-xs border border-emerald-500/50 cursor-pointer"
+          title="Unduh file CSV dengan kolom [No], [NamaUser], [Tanggal], [SiteID-SiteName], [Keterangan]"
+        >
+          <Download className="w-4 h-4 text-emerald-100" />
+          <span>Export CSV</span>
+        </button>
       )}
 
       {/* Active Users Summary Banner */}

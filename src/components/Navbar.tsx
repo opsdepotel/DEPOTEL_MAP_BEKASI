@@ -62,11 +62,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                     {activeCluster.charAt(0).toUpperCase() + activeCluster.slice(1).toLowerCase()}
                   </span>
                 )}
-                {isTowerSpace && (
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-xs">
-                    Tower Space (Mulai 1 Okt 2026, Exclude CM)
-                  </span>
-                )}
               </div>
               <p className="text-xs text-slate-400 hidden sm:block">
                 Monitoring kegiatan harian team
