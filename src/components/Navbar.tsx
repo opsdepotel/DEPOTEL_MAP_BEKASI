@@ -5,7 +5,8 @@ import {
   RefreshCw,
   CheckCircle2,
   AlertCircle,
-  UserCheck
+  UserCheck,
+  Download
 } from 'lucide-react';
 import { SheetFetchState } from '../types';
 import { DepotelLogo } from './DepotelLogo';
@@ -23,6 +24,7 @@ interface NavbarProps {
   checkinCount?: number;
   onOpenCheckinModal?: () => void;
   isTowerSpace?: boolean;
+  onExportTowerSpaceCsv?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -38,6 +40,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   checkinCount = 0,
   onOpenCheckinModal,
   isTowerSpace = false,
+  onExportTowerSpaceCsv,
 }) => {
   return (
     <header className="bg-gradient-to-r from-blue-950 via-slate-950 to-black text-white border-b border-slate-800/80 sticky top-0 z-40 shadow-lg">
@@ -113,6 +116,18 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span className="inline-flex items-center px-1.5 py-0.2 rounded-full text-[10px] font-black bg-emerald-950/80 text-emerald-300 border border-emerald-400/40">
                   {checkinCount}
                 </span>
+              </button>
+            )}
+
+            {/* Dedicated Export CSV Button for Activity=TowerSpace */}
+            {isTowerSpace && onExportTowerSpaceCsv && (
+              <button
+                onClick={onExportTowerSpaceCsv}
+                title="Unduh file CSV dengan kolom [No], [NamaUser], [Tanggal], [SiteID-SiteName], [Keterangan]"
+                className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 border border-emerald-500/50 shadow-sm transition hover:shadow-emerald-500/20 cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5 text-emerald-100" />
+                <span className="hidden sm:inline">Export CSV</span>
               </button>
             )}
 

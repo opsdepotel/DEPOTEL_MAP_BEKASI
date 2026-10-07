@@ -19,6 +19,7 @@ import { ActivityList } from './components/ActivityList';
 import { AddActivityModal } from './components/AddActivityModal';
 import { ActivityDetailModal } from './components/ActivityDetailModal';
 import { CheckinUserListModal } from './components/CheckinUserListModal';
+import { exportTowerSpaceCsv } from './utils/exportTowerSpaceCsv';
 
 import { MapPin, AlertCircle, RefreshCw, FileSpreadsheet, PlusCircle } from 'lucide-react';
 
@@ -438,6 +439,11 @@ export default function App() {
     }).length;
   }, [baseFilteredActivities]);
 
+  // Export handler for Activity=TowerSpace
+  const handleExportTowerSpaceCsv = useCallback(() => {
+    exportTowerSpaceCsv(baseFilteredActivities);
+  }, [baseFilteredActivities]);
+
   // Add new activity
   const handleAddActivity = (newActivity: TeamActivity) => {
     setActivities(prev => [newActivity, ...prev]);
@@ -477,7 +483,9 @@ export default function App() {
         onOpenAddModal={() => setIsAddModalOpen(true)}
         activeCluster={filter.cluster}
         checkinCount={checkinCount}
-        onOpenCheckinModal={() => setIsCheckinModalOpen(true)}
+        onOpenCheckinModal={isTowerSpaceMode ? undefined : () => setIsCheckinModalOpen(true)}
+        isTowerSpace={isTowerSpaceMode}
+        onExportTowerSpaceCsv={isTowerSpaceMode ? handleExportTowerSpaceCsv : undefined}
       />
 
       {/* Main Container */}
@@ -570,7 +578,9 @@ export default function App() {
               }}
               showTrail={showTrail}
               onToggleTrail={() => setShowTrail(!showTrail)}
-              onOpenCheckinModal={() => setIsCheckinModalOpen(true)}
+              onOpenCheckinModal={isTowerSpaceMode ? undefined : () => setIsCheckinModalOpen(true)}
+              isTowerSpace={isTowerSpaceMode}
+              onExportTowerSpaceCsv={isTowerSpaceMode ? handleExportTowerSpaceCsv : undefined}
             />
 
           </div>

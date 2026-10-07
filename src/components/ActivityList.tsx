@@ -18,6 +18,7 @@ import {
   Clock,
   X,
   UserCheck,
+  Download,
 } from 'lucide-react';
 
 interface ActivityListProps {
@@ -34,6 +35,7 @@ interface ActivityListProps {
   onToggleTrail: () => void;
   onOpenCheckinModal?: () => void;
   isTowerSpace?: boolean;
+  onExportTowerSpaceCsv?: () => void;
 }
 
 interface ActiveUserGroup {
@@ -60,6 +62,7 @@ export const ActivityList: React.FC<ActivityListProps> = ({
   onToggleTrail,
   onOpenCheckinModal,
   isTowerSpace = false,
+  onExportTowerSpaceCsv,
 }) => {
   const [expandedUsers, setExpandedUsers] = useState<Record<string, boolean>>({});
   const itemRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
@@ -295,32 +298,37 @@ export const ActivityList: React.FC<ActivityListProps> = ({
         </div>
       </div>
 
-      {/* Check-in Quick Form Access Card (Hidden when isTowerSpace is true) */}
-      {!isTowerSpace && onOpenCheckinModal && (
-        <button
-          onClick={onOpenCheckinModal}
-          className="w-full bg-gradient-to-r from-emerald-600 via-emerald-700 to-teal-800 hover:from-emerald-500 hover:to-teal-700 text-white p-2.5 rounded-xl shadow-xs transition flex items-center justify-between gap-3 text-left group cursor-pointer border border-emerald-500/40"
-        >
+      {/* Tower Space Dedicated Export Banner Card */}
+      {isTowerSpace && (
+        <div className="bg-gradient-to-r from-emerald-900 via-slate-900 to-emerald-950 text-white p-3 rounded-xl shadow-xs border border-emerald-500/40 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0 shadow-inner">
-              <UserCheck className="w-4 h-4 text-white" />
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center shrink-0 shadow-inner text-emerald-400 font-black text-xs">
+              TS
             </div>
             <div>
-              <div className="font-bold text-xs leading-snug flex items-center gap-1.5">
-                <span>Form Daftar User CHECK-IN</span>
-                <span className="bg-emerald-950/60 text-emerald-300 text-[10px] font-black px-1.5 py-0.2 rounded-full border border-emerald-400/40">
-                  {checkinCount} User
+              <div className="font-bold text-xs text-white leading-snug flex items-center gap-1.5">
+                <span>Filter: Activity=TowerSpace</span>
+                <span className="bg-emerald-500 text-slate-950 text-[10px] font-black px-1.5 py-0.2 rounded-full">
+                  {activities.length} Aktivitas
                 </span>
               </div>
-              <p className="text-[10px] text-emerald-100/90 leading-tight">
-                Tabel waktu (hh:mm:ss), koordinat & alamat
+              <p className="text-[10px] text-emerald-200/80 leading-tight">
+                Mulai 1 Okt 2026 • Non-CM
               </p>
             </div>
           </div>
-          <span className="text-[11px] font-bold bg-white text-emerald-800 px-2.5 py-1 rounded-lg shadow-2xs group-hover:bg-emerald-50 shrink-0 transition">
-            Buka Form →
-          </span>
-        </button>
+
+          {onExportTowerSpaceCsv && (
+            <button
+              onClick={onExportTowerSpaceCsv}
+              className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs flex items-center gap-1.5 shadow-sm transition shrink-0 cursor-pointer"
+              title="Unduh CSV [No, NamaUser, Tanggal, SiteID-SiteName, Keterangan]"
+            >
+              <Download className="w-3.5 h-3.5 text-slate-950" />
+              <span>Export CSV</span>
+            </button>
+          )}
+        </div>
       )}
 
       {/* Active Users Summary Banner */}
