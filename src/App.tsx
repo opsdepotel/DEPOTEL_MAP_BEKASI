@@ -42,7 +42,17 @@ export function getClusterFromUrl(): string {
   return 'ALL';
 }
 
+// Check if URL query param ?Activity=TowerSpace (case-insensitive) is present
+export function isTowerSpaceQueryParam(): boolean {
+  if (typeof window === 'undefined') return false;
+  const searchParams = new URLSearchParams(window.location.search);
+  const val = searchParams.get('Activity') || searchParams.get('activity') || '';
+  return val.trim().toLowerCase() === 'towerspace';
+}
+
 export default function App() {
+  const isTowerSpaceMode = isTowerSpaceQueryParam();
+
   // Auth States
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -82,7 +92,7 @@ export default function App() {
   const [filter, setFilter] = useState<ActivityFilter>(() => ({
     searchQuery: '',
     userId: 'ALL',
-    selectedDate: todayStr,
+    selectedDate: isTowerSpaceQueryParam() ? 'ALL' : todayStr,
     category: 'ALL',
     status: 'ALL',
     division: 'ALL',
@@ -235,6 +245,14 @@ export default function App() {
   // Filter users by Division (Column G), Sub Division (Column H), and Cluster (Column O)
   const filteredUsers = useMemo(() => {
     return users.filter(u => {
+      // Query Param ?Activity=TowerSpace: Exclude SubDivisi "CM"
+      if (isTowerSpaceMode) {
+        const uSub = (u.subDivision || u.team || '').toUpperCase();
+        if (uSub === 'CM' || uSub.includes('CM') || normalizeSubDiv(u.subDivision || '') === 'cm') {
+          return false;
+        }
+      }
+
       // Cluster Filter (Column O)
       if (filter.cluster && filter.cluster !== 'ALL') {
         const targetCluster = filter.cluster.trim().toLowerCase();
@@ -266,7 +284,7 @@ export default function App() {
 
       return true;
     });
-  }, [users, filter.division, filter.subDivision, filter.cluster]);
+  }, [users, filter.division, filter.subDivision, filter.cluster, isTowerSpaceMode]);
 
   // Base Filtered Activities (Filtered by Date, SubDiv, Category, Search Query, etc. EXCLUDING selectedUserId)
   const baseFilteredActivities = useMemo(() => {
@@ -294,6 +312,27 @@ export default function App() {
 
     return activities.filter(act => {
       const userObj = findUserForActivity(act, users);
+
+      // Query Param ?Activity=TowerSpace rules:
+      if (isTowerSpaceMode) {
+        // Rule 1: Date starting from 1 October 2026
+        const actDate = normalizeDate(act.date);
+        if (actDate && actDate < '2026-10-01') {
+          return false;
+        }
+
+        // Rule 2: Column "Keterangan" (description/title/siteName) contains "Tower Space", "Space Tower", "Tower", etc.
+        const searchTxt = `${act.description || ''} ${act.title || ''} ${act.siteName || ''} ${act.locationName || ''}`.toLowerCase();
+        if (!searchTxt.includes('tower')) {
+          return false;
+        }
+
+        // Rule 3: Exclude User SubDivisi "CM"
+        const actUserSub = (act.userSubDivision || userObj?.subDivision || userObj?.team || act.userTeam || '').toUpperCase();
+        if (actUserSub === 'CM' || actUserSub.includes('CM') || normalizeSubDiv(actUserSub) === 'cm') {
+          return false;
+        }
+      }
 
       // Cluster Filter: Dynamic based on filter.cluster
       if (filter.cluster && filter.cluster !== 'ALL') {
@@ -372,7 +411,7 @@ export default function App() {
 
       return true;
     });
-  }, [activities, users, filter, findUserForActivity]);
+  }, [activities, users, filter, findUserForActivity, isTowerSpaceMode]);
 
   // Filtered Activities for Map and Stats (further filtered by selectedUserId)
   const filteredActivities = useMemo(() => {

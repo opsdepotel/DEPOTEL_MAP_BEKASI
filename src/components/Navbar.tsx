@@ -22,6 +22,7 @@ interface NavbarProps {
   activeCluster?: string;
   checkinCount?: number;
   onOpenCheckinModal?: () => void;
+  isTowerSpace?: boolean;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -36,6 +37,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeCluster,
   checkinCount = 0,
   onOpenCheckinModal,
+  isTowerSpace = false,
 }) => {
   return (
     <header className="bg-gradient-to-r from-blue-950 via-slate-950 to-black text-white border-b border-slate-800/80 sticky top-0 z-40 shadow-lg">
@@ -55,6 +57,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                 {activeCluster && activeCluster !== 'ALL' && (
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs">
                     {activeCluster.charAt(0).toUpperCase() + activeCluster.slice(1).toLowerCase()}
+                  </span>
+                )}
+                {isTowerSpace && (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-xs">
+                    Tower Space (Mulai 1 Okt 2026, Exclude CM)
                   </span>
                 )}
               </div>
@@ -94,8 +101,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
             </div>
 
-            {/* Form / Daftar User Check-in Button */}
-            {onOpenCheckinModal && (
+            {/* Form / Daftar User Check-in Button (Hidden when isTowerSpace is true) */}
+            {!isTowerSpace && onOpenCheckinModal && (
               <button
                 onClick={onOpenCheckinModal}
                 title="Buka Form Daftar User berstatus CHECKIN"

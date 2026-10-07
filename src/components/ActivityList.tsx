@@ -33,6 +33,7 @@ interface ActivityListProps {
   showTrail: boolean;
   onToggleTrail: () => void;
   onOpenCheckinModal?: () => void;
+  isTowerSpace?: boolean;
 }
 
 interface ActiveUserGroup {
@@ -58,6 +59,7 @@ export const ActivityList: React.FC<ActivityListProps> = ({
   showTrail,
   onToggleTrail,
   onOpenCheckinModal,
+  isTowerSpace = false,
 }) => {
   const [expandedUsers, setExpandedUsers] = useState<Record<string, boolean>>({});
   const itemRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
@@ -293,8 +295,8 @@ export const ActivityList: React.FC<ActivityListProps> = ({
         </div>
       </div>
 
-      {/* Check-in Quick Form Access Card */}
-      {onOpenCheckinModal && (
+      {/* Check-in Quick Form Access Card (Hidden when isTowerSpace is true) */}
+      {!isTowerSpace && onOpenCheckinModal && (
         <button
           onClick={onOpenCheckinModal}
           className="w-full bg-gradient-to-r from-emerald-600 via-emerald-700 to-teal-800 hover:from-emerald-500 hover:to-teal-700 text-white p-2.5 rounded-xl shadow-xs transition flex items-center justify-between gap-3 text-left group cursor-pointer border border-emerald-500/40"
